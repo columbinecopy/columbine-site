@@ -1,0 +1,8 @@
+{
+  "name": "columbine-print-backend",
+  "version": "1.0.0",
+  "description": "Netlify Functions backend for Columbine Copy & Apparel",
+  "dependencies": {
+    "square": "^37.0.0"
+  }
+}
