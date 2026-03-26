@@ -1,133 +1,108 @@
-
 /**
  * Columbine Copy & Apparel — Payment + Upload + Email Function
- * ------------------------------------------------------------
- * This Netlify Function:
- * 1. Receives the PDF file (as base64) + order details from the website
- * 2. Uploads the PDF to Cloudinary and gets a secure download link
- * 3. Charges the customer via Square
- * 4. Emails you the order details + PDF download link via Resend
- * 5. Emails the customer a confirmation
- *
- * Environment variables to set in Netlify dashboard:
- *   SQUARE_ACCESS_TOKEN      — from Square Developer Dashboard
- *   SQUARE_LOCATION_ID       — from Square Developer Dashboard
- *   CLOUDINARY_CLOUD_NAME    — djrmthnct
- *   CLOUDINARY_API_KEY       — 557487239997232
- *   CLOUDINARY_API_SECRET    — (from your Cloudinary dashboard — keep private)
- *   RESEND_API_KEY           — re_YriUU5ot_2bpDziSRMXYDLHEsp9MRRKpd
- *   OWNER_EMAIL              — your Gmail address
- *   NODE_ENV                 — sandbox (for testing) or production (for real payments)
  */
 
 const { Client, Environment, ApiError } = require('square');
 const { randomUUID } = require('crypto');
 const https = require('https');
+const crypto = require('crypto');
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function httpsPost(url, data, headers) {
+// ── HTTPS helper ─────────────────────────────────────────────────────────────
+function httpsRequest(options, body) {
   return new Promise((resolve, reject) => {
-    const body = typeof data === 'string' ? data : JSON.stringify(data);
-    const urlObj = new URL(url);
-    const options = {
-      hostname: urlObj.hostname,
-      path: urlObj.pathname + urlObj.search,
-      method: 'POST',
-      headers: { 'Content-Length': Buffer.byteLength(body), ...headers },
-    };
     const req = https.request(options, res => {
-      let d = '';
-      res.on('data', c => d += c);
+      let data = '';
+      res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(d) }); }
-        catch(e) { resolve({ status: res.statusCode, body: d }); }
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch(e) { resolve({ status: res.statusCode, body: data }); }
       });
     });
     req.on('error', reject);
-    req.write(body);
+    if (body) req.write(body);
     req.end();
   });
 }
 
 // ── Upload PDF to Cloudinary ──────────────────────────────────────────────────
 async function uploadToCloudinary(base64Data, fileName, orderId) {
-  const crypto = require('crypto');
   const timestamp = Math.floor(Date.now() / 1000);
-  const publicId = `print-orders/${orderId}/${fileName.replace('.pdf','')}`;
-  
-  // Generate signature
-  const sigStr = `public_id=${publicId}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`;
+  const publicId = `print-orders/${orderId}/${fileName.replace(/\.pdf$/i, '')}`;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  // Build signature — params must be alphabetically sorted
+  const params = { public_id: publicId, timestamp };
+  const sigStr = Object.keys(params).sort()
+    .map(k => `${k}=${params[k]}`).join('&') + apiSecret;
   const signature = crypto.createHash('sha1').update(sigStr).digest('hex');
 
-  // Build multipart form data manually
-  const boundary = '----CloudinaryBoundary' + randomUUID().replace(/-/g,'');
-  const CRLF = '\r\n';
+  // Build JSON body — use URL upload with base64 data URI
+  const payload = JSON.stringify({
+    file: `data:application/pdf;base64,${base64Data}`,
+    public_id: publicId,
+    timestamp,
+    api_key: apiKey,
+    signature,
+    resource_type: 'raw',
+  });
 
-  const addField = (name, value) =>
-    `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`;
+  const result = await httpsRequest({
+    hostname: 'api.cloudinary.com',
+    path: `/v1_1/${cloudName}/raw/upload`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(payload),
+    },
+  }, payload);
 
-  let formText = '';
-  formText += addField('file', `data:application/pdf;base64,${base64Data}`);
-  formText += addField('public_id', publicId);
-  formText += addField('timestamp', timestamp.toString());
-  formText += addField('api_key', process.env.CLOUDINARY_API_KEY);
-  formText += addField('signature', signature);
-  formText += addField('resource_type', 'raw');
-  // Auto-delete after 60 days (in seconds)
-  formText += addField('invalidate', 'true');
-  formText += `--${boundary}--${CRLF}`;
-
-  const result = await httpsPost(
-    `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
-    formText,
-    {
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-    }
-  );
+  console.log('Cloudinary response status:', result.status);
+  console.log('Cloudinary response:', JSON.stringify(result.body).substring(0, 300));
 
   if (result.status !== 200) {
-    console.error('Cloudinary error:', result.body);
-    throw new Error('Failed to upload PDF to Cloudinary');
+    throw new Error(`Cloudinary upload failed: ${JSON.stringify(result.body)}`);
   }
-
   return result.body.secure_url;
 }
 
-// ── Send email via Resend ────────────────────────────────────────────────────
+// ── Send email via Resend ─────────────────────────────────────────────────────
 async function sendEmail(to, subject, html) {
-  const result = await httpsPost(
-    'https://api.resend.com/emails',
-    {
-      from: 'Columbine Copy & Apparel <onboarding@resend.dev>',
-      to: [to],
-      subject,
-      html,
-    },
-    {
+  const payload = JSON.stringify({
+    from: 'Columbine Copy & Apparel <onboarding@resend.dev>',
+    to: [to],
+    subject,
+    html,
+  });
+  const result = await httpsRequest({
+    hostname: 'api.resend.com',
+    path: '/emails',
+    method: 'POST',
+    headers: {
       'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(payload),
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-    }
-  );
+    },
+  }, payload);
   if (result.status !== 200 && result.status !== 201) {
     console.error('Resend error:', result.body);
   }
   return result;
 }
 
-// ── Format order details for email ──────────────────────────────────────────
+// ── Format cart item for email ────────────────────────────────────────────────
 function formatCartItem(item, index) {
   const sizeLabels = {
-    letter:'Letter',legal:'Legal',a4:'A4',tabloid:'Tabloid',
+    letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
     'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
     'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
     'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
   };
   const mediaLabels = {
-    bond20:'Standard Bond (20lb)',bond36:'Heavyweight Bond (36lb)',
-    mylar:'Mylar Film',vellum:'Vellum',photo:'Photo Paper',
+    bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
+    mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
   };
-
   const lines = [
     `<b>File:</b> ${item.fileName}`,
     `<b>Format:</b> ${item.format === 'large' ? 'Large Format' : 'Small Format'}`,
@@ -137,60 +112,63 @@ function formatCartItem(item, index) {
       : `<b>Media:</b> ${mediaLabels[item.mediaType] || item.mediaType}`,
     `<b>Color:</b> ${item.color === 'color' ? 'Full Color' : 'Black & White'}`,
     item.sides ? `<b>Sides:</b> ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'}` : '',
-    `<b>Pages:</b> ${item.rangeStr} ${item.totalPages ? `(${item.totalPages} pages)` : ''}`,
+    `<b>Pages:</b> ${item.rangeStr || 'All'} ${item.totalPages ? `(${item.totalPages} pages)` : ''}`,
     `<b>Copies:</b> ${item.copies}`,
     item.binding ? `<b>Binding:</b> ${item.bindType || 'Yes'}` : '',
     item.lamination ? `<b>Lamination:</b> ${item.lamType || 'Yes'}` : '',
     item.holePunch ? `<b>Hole Punch:</b> Yes` : '',
     item.notes ? `<b>Notes:</b> ${item.notes}` : '',
-    `<b>Item Total:</b> $${item.price.toFixed(2)}`,
+    `<b>Item Total:</b> $${Number(item.price || 0).toFixed(2)}`,
   ].filter(Boolean);
 
   return `
     <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:14px 18px;margin-bottom:12px">
-      <div style="font-family:Oswald,sans-serif;font-size:1rem;font-weight:700;color:#1a0a2e;margin-bottom:8px">
-        Item ${index + 1}
-      </div>
+      <div style="font-weight:700;color:#1a0a2e;margin-bottom:8px">Item ${index + 1}</div>
       ${lines.map(l => `<div style="font-size:0.88rem;color:#333;margin-bottom:3px">${l}</div>`).join('')}
     </div>`;
 }
 
-// ── Main handler ─────────────────────────────────────────────────────────────
+// ── Main handler ──────────────────────────────────────────────────────────────
 exports.handler = async function(event) {
-
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   let body;
   try { body = JSON.parse(event.body); }
-  catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request' }) }; }
+  catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) }; }
 
   const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles } = body;
 
-  if (!sourceId || !amountCents || amountCents < 50) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid payment details.' }) };
+  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0);
+
+  if (!sourceId) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
+  }
+  if (!amountCents || isNaN(amountCents) || amountCents < 1) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid order amount.' }) };
   }
 
+  const finalAmount = Math.max(Number(amountCents), 100);
+  const totalAmount = (finalAmount / 100).toFixed(2);
   const orderId = 'CCA-' + Math.floor(100000 + Math.random() * 900000);
-  const totalAmount = (amountCents / 100).toFixed(2);
 
   // ── 1. Upload PDFs to Cloudinary ──────────────────────────────────────────
   const uploadedFiles = [];
   if (pdfFiles && pdfFiles.length > 0) {
     for (const pdfFile of pdfFiles) {
       try {
-        const downloadUrl = await uploadToCloudinary(pdfFile.data, pdfFile.name, orderId);
-        uploadedFiles.push({ name: pdfFile.name, url: downloadUrl });
-        console.log(`✅ Uploaded ${pdfFile.name} → ${downloadUrl}`);
+        const url = await uploadToCloudinary(pdfFile.data, pdfFile.name, orderId);
+        uploadedFiles.push({ name: pdfFile.name, url });
+        console.log(`✅ Uploaded: ${pdfFile.name}`);
       } catch(e) {
-        console.error(`Failed to upload ${pdfFile.name}:`, e.message);
+        console.error(`Upload failed for ${pdfFile.name}:`, e.message);
         uploadedFiles.push({ name: pdfFile.name, url: null });
       }
     }
   }
 
-  // ── 2. Charge customer via Square ─────────────────────────────────────────
+  // ── 2. Charge via Square ──────────────────────────────────────────────────
   const squareClient = new Client({
     accessToken: process.env.SQUARE_ACCESS_TOKEN,
     environment: process.env.NODE_ENV === 'production'
@@ -201,7 +179,7 @@ exports.handler = async function(event) {
     const response = await squareClient.paymentsApi.createPayment({
       sourceId,
       idempotencyKey: randomUUID(),
-      amountMoney: { amount: BigInt(amountCents), currency: currency || 'USD' },
+      amountMoney: { amount: BigInt(finalAmount), currency: currency || 'USD' },
       locationId: process.env.SQUARE_LOCATION_ID,
       referenceId: orderId,
       note: `Columbine Print Order ${orderId} — ${customer?.name || 'Customer'}`,
@@ -209,77 +187,67 @@ exports.handler = async function(event) {
     });
 
     const payment = response.result.payment;
-    console.log(`✅ Payment ${payment.id} — Order ${orderId} — $${totalAmount}`);
+    console.log(`✅ Payment success — ${orderId} — $${totalAmount}`);
 
-    // ── 3. Email YOU (owner) ───────────────────────────────────────────────
+    // ── 3. Email owner ────────────────────────────────────────────────────
     const fileLinksHtml = uploadedFiles.length > 0
       ? uploadedFiles.map(f => f.url
-          ? `<div style="margin-bottom:6px">📄 <a href="${f.url}" style="color:#6b27b8;font-weight:600">${f.name}</a> — <a href="${f.url}" style="color:#6b27b8">Download PDF</a></div>`
-          : `<div style="margin-bottom:6px">📄 ${f.name} — <span style="color:#cc0000">Upload failed</span></div>`
+          ? `<div style="margin-bottom:8px">📄 <a href="${f.url}" style="color:#6b27b8;font-weight:600">${f.name}</a> — <a href="${f.url}" style="color:#6b27b8">⬇ Download PDF</a></div>`
+          : `<div style="margin-bottom:8px">📄 ${f.name} — <span style="color:#cc0000">⚠ Upload failed — customer will need to resend</span></div>`
         ).join('')
-      : '<p style="color:#999;font-style:italic">No files uploaded</p>';
+      : '<p style="color:#999;font-style:italic">No files were uploaded with this order</p>';
 
     const cartHtml = (cartItems || []).map((item, i) => formatCartItem(item, i)).join('');
 
     await sendEmail(
       process.env.OWNER_EMAIL,
       `🖨 New Print Order ${orderId} — $${totalAmount} — ${customer?.name}`,
-      `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0">
-          <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">New Print Order Received</h1>
-          <p style="color:#9a8ab0;margin:6px 0 0">Order ${orderId} · $${totalAmount} paid</p>
+          <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">New Print Order</h1>
+          <p style="color:#9a8ab0;margin:6px 0 0">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid</p>
         </div>
-
         <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none">
-
-          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 12px">Customer</h2>
-          <div style="background:#f4f0fb;border-radius:6px;padding:14px 18px;margin-bottom:20px;font-size:0.88rem">
+          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 10px">Customer</h2>
+          <div style="background:#f4f0fb;border-radius:6px;padding:14px 18px;margin-bottom:20px;font-size:.88rem">
             <div><b>Name:</b> ${customer?.name || '—'}</div>
             <div><b>Email:</b> ${customer?.email || '—'}</div>
             <div><b>Phone:</b> ${customer?.phone || '—'}</div>
-            ${orderNotes ? `<div><b>Order Notes:</b> ${orderNotes}</div>` : ''}
+            ${orderNotes ? `<div><b>Notes:</b> ${orderNotes}</div>` : ''}
           </div>
-
-          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 12px">PDF Files to Print</h2>
+          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 10px">PDF Files</h2>
           <div style="margin-bottom:20px">${fileLinksHtml}</div>
-
-          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 12px">Order Items</h2>
+          <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 10px">Order Details</h2>
           ${cartHtml}
-
-          <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
-            <span style="color:#9a8ab0;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</span>
+          <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+            <span style="color:#9a8ab0;font-size:.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</span>
             <span style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</span>
           </div>
-
-          <p style="color:#999;font-size:0.78rem;margin-top:16px">
-            Payment ID: ${payment.id} · Square Order Ref: ${orderId}
-          </p>
+          <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
         </div>
       </div>`
     );
 
-    // ── 4. Email CUSTOMER confirmation ─────────────────────────────────────
+    // ── 4. Email customer ─────────────────────────────────────────────────
     if (customer?.email) {
       await sendEmail(
         customer.email,
         `Your print order is confirmed — ${orderId}`,
-        `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0;text-align:center">
             <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">Order Confirmed!</h1>
             <p style="color:#9a8ab0;margin:6px 0 0">Columbine Copy & Apparel</p>
           </div>
           <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none;text-align:center">
-            <p style="color:#333;font-size:0.95rem">Hi ${customer.name?.split(' ')[0] || 'there'},</p>
-            <p style="color:#333;font-size:0.88rem">Thank you for your order! We have received your payment and will begin processing your print job shortly.</p>
+            <p style="color:#333">Hi ${customer.name?.split(' ')[0] || 'there'},</p>
+            <p style="color:#555;font-size:.9rem">Thank you for your order! We have received your payment and will begin processing your print job shortly.</p>
             <div style="background:#f4f0fb;border-radius:6px;padding:16px;margin:20px 0;display:inline-block">
-              <div style="color:#6e5a8a;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px">Order Reference</div>
+              <div style="color:#6e5a8a;font-size:.78rem;text-transform:uppercase;letter-spacing:1px">Order Reference</div>
               <div style="color:#1a0a2e;font-size:1.4rem;font-weight:700;font-family:monospace;letter-spacing:2px">${orderId}</div>
             </div>
-            <p style="color:#333;font-size:0.88rem">Total paid: <b>$${totalAmount}</b></p>
-            <p style="color:#555;font-size:0.85rem">We will contact you when your order is ready for pickup.</p>
-            <p style="color:#999;font-size:0.78rem;margin-top:24px">Columbine Copy & Apparel · All files are kept confidential and deleted after printing</p>
+            <p style="color:#333">Total paid: <b>$${totalAmount}</b></p>
+            <p style="color:#555;font-size:.88rem">We will contact you when your order is ready for pickup.</p>
+            <p style="color:#999;font-size:.78rem;margin-top:24px">Columbine Copy & Apparel · All files are kept confidential and deleted after printing</p>
           </div>
         </div>`
       );
@@ -291,7 +259,7 @@ exports.handler = async function(event) {
       body: JSON.stringify({ success: true, orderId, paymentId: payment.id }),
     };
 
-  } catch (error) {
+  } catch(error) {
     if (error instanceof ApiError) {
       const msg = error.errors?.map(e => e.detail).join('; ') || 'Payment failed.';
       console.error('Square error:', msg);
