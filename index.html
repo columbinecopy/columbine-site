@@ -542,8 +542,10 @@ footer strong{color:var(--gold)}
       <div class="cart-empty" id="cartEmpty">No items yet — configure a file and add it to your cart.</div>
     </div>
     <div id="cartTotalRow" style="display:none">
+      <div style="text-align:right;padding:4px 0;font-size:0.85rem;color:#9a8ab0" id="cartSubtotalLine"></div>
+      <div style="text-align:right;padding:4px 0;font-size:0.85rem;color:#9a8ab0" id="cartTaxLine"></div>
       <div class="cart-total-row">
-        <div class="cart-total-label">Cart Total</div>
+        <div class="cart-total-label">Total (incl. tax)</div>
         <div class="cart-total-price" id="cartTotalPrice">$0.00</div>
       </div>
     </div>
@@ -602,6 +604,9 @@ footer strong{color:var(--gold)}
 
 <script>
 // ════════════════════════════════════════════════════════════════
+const TAX_RATE = 0.0853; // 8.53% Montrose, CO sales tax
+const MINIMUM_ORDER = 3.00; // Minimum order amount
+
 const PRICING = {
 
   // ── SMALL FORMAT ─────────────────────────────────────────────
@@ -1163,9 +1168,16 @@ function renderCart() {
     return `<div class="cart-item"><div class="cart-item-header"><div class="cart-item-num">${i+1}</div><div class="cart-item-name" title="${item.fileName}">${item.fileName}</div><div class="cart-item-price">$${item.price.toFixed(2)}</div></div><div class="cart-item-body">${details.join(' · ')}</div><div class="cart-item-actions"><button class="cart-action-btn" onclick="editCartItem(${i})">✏️ Edit</button><button class="cart-action-btn danger" onclick="removeCartItem(${i})">🗑 Remove</button></div></div>`;
   }).join('');
   countEl.textContent='('+cart.length+' item'+(cart.length!==1?'s':'')+')';
+  const tax = total * TAX_RATE;
+  const grandTotal = total + tax;
   totalRow.style.display='';
-  document.getElementById('cartTotalPrice').textContent='$'+total.toFixed(2);
-  document.getElementById('checkoutTotalPrice').textContent='$'+total.toFixed(2);
+  document.getElementById('cartTotalPrice').textContent='$'+grandTotal.toFixed(2);
+  document.getElementById('checkoutTotalPrice').textContent='$'+grandTotal.toFixed(2);
+  // Update tax line if it exists
+  const taxEl = document.getElementById('cartTaxLine');
+  if (taxEl) taxEl.textContent = 'Tax (8.53%): $'+tax.toFixed(2);
+  const subtotalEl = document.getElementById('cartSubtotalLine');
+  if (subtotalEl) subtotalEl.textContent = 'Subtotal: $'+total.toFixed(2);
   updateCheckoutBtn();
 }
 
@@ -1264,8 +1276,18 @@ async function handlePayment(){
       }
     }
     const total=cart.reduce((s,i)=>s+i.price,0);
+    if (!total || total <= 0) {
+      status.textContent = 'Cart total is $0 — please add items to your cart first.';
+      btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return;
+    }
+    if (total < MINIMUM_ORDER) {
+      status.textContent = `A minimum order of $${MINIMUM_ORDER.toFixed(2)} is required. Your current subtotal is $${total.toFixed(2)} — please add more items to your cart.`;
+      btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return;
+    }
+    const tax = total * TAX_RATE;
+    const chargeTotal = total + tax;
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      sourceId:result.token, amountCents:Math.round(total*100), currency:'USD',
+      sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
       customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
       cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
     })});
