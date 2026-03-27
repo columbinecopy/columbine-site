@@ -115,6 +115,8 @@ exports.handler = async function(event) {
 
   const finalAmount = Math.max(Number(amountCents), 100);
   const totalAmount = (finalAmount / 100).toFixed(2);
+  const subtotalAmount = (finalAmount / 100 / 1.0853).toFixed(2);
+  const taxAmount = ((finalAmount / 100) - (finalAmount / 100 / 1.0853)).toFixed(2);
   const orderId = 'CCA-' + Math.floor(100000 + Math.random() * 900000);
 
   // ── 1. Charge via Square ──────────────────────────────────────────────────
@@ -191,8 +193,12 @@ exports.handler = async function(event) {
         <h2 style="color:#1a0a2e;font-size:1rem;margin:16px 0 10px">Order Details</h2>
         ${cartHtml}
         <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-          <span style="color:#9a8ab0;font-size:.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</span>
-          <span style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</span>
+          <div>
+            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:2px">Subtotal: $${subtotalAmount}</div>
+            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:6px">Tax (8.53%): $${taxAmount}</div>
+            <div style="color:#9a8ab0;font-size:.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</div>
+            <div style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</div>
+          </div>
         </div>
         <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
       </div>
