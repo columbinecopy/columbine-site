@@ -32,13 +32,14 @@ async function uploadToCloudinary(base64Data, fileName, orderId) {
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-  // Build signature — params must be alphabetically sorted
-  const params = { public_id: publicId, timestamp };
-  const sigStr = Object.keys(params).sort()
-    .map(k => `${k}=${params[k]}`).join('&') + apiSecret;
+  // Signature must include ONLY the params being signed (NOT api_key, NOT file, NOT resource_type)
+  // Must be alphabetically sorted
+  const sigParams = { public_id: publicId, timestamp };
+  const sigStr = Object.keys(sigParams).sort()
+    .map(k => `${k}=${sigParams[k]}`).join('&') + apiSecret;
   const signature = crypto.createHash('sha1').update(sigStr).digest('hex');
 
-  // Build JSON body — use URL upload with base64 data URI
+  // Build JSON body
   const payload = JSON.stringify({
     file: `data:application/pdf;base64,${base64Data}`,
     public_id: publicId,
@@ -46,6 +47,7 @@ async function uploadToCloudinary(base64Data, fileName, orderId) {
     api_key: apiKey,
     signature,
     resource_type: 'raw',
+    // Note: NOT including invalidate — it was breaking the signature
   });
 
   const result = await httpsRequest({
@@ -70,7 +72,7 @@ async function uploadToCloudinary(base64Data, fileName, orderId) {
 // ── Send email via Resend ─────────────────────────────────────────────────────
 async function sendEmail(to, subject, html) {
   const payload = JSON.stringify({
-    from: 'Columbine Copy & Apparel <onboarding@resend.dev>',
+    from: `Columbine Copy & Apparel <${process.env.OWNER_EMAIL}>`,
     to: [to],
     subject,
     html,
