@@ -11,15 +11,19 @@ const crypto = require('crypto');
 function httpsRequest(options, body) {
   return new Promise((resolve, reject) => {
     const req = https.request(options, res => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
+      const chunks = [];
+      res.on('data', chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
       res.on('end', () => {
+        const data = Buffer.concat(chunks).toString('utf8');
         try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
         catch(e) { resolve({ status: res.statusCode, body: data }); }
       });
     });
     req.on('error', reject);
-    if (body) req.write(body);
+    if (body) {
+      if (Buffer.isBuffer(body)) req.write(body);
+      else req.write(body);
+    }
     req.end();
   });
 }
@@ -39,24 +43,48 @@ async function uploadToCloudinary(base64Data, fileName, orderId) {
     .map(k => `${k}=${sigParams[k]}`).join('&') + apiSecret;
   const signature = crypto.createHash('sha1').update(sigStr).digest('hex');
 
-  // Build JSON body
-  const payload = JSON.stringify({
-    file: `data:application/pdf;base64,${base64Data}`,
-    public_id: publicId,
-    timestamp,
-    api_key: apiKey,
-    signature,
-    resource_type: 'raw',
-    // Note: NOT including invalidate — it was breaking the signature
-  });
+  // Convert base64 to binary buffer
+  const fileBuffer = Buffer.from(base64Data, 'base64');
+
+  // Build multipart form data with binary PDF
+  const boundary = '----FormBoundary' + randomUUID().replace(/-/g, '');
+  const CRLF = '\r\n';
+
+  const parts = [];
+  const addField = (name, value) => {
+    parts.push(
+      Buffer.from(`--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}`, 'utf8'),
+      Buffer.from(String(value), 'utf8'),
+      Buffer.from(CRLF, 'utf8')
+    );
+  };
+
+  // Add text fields
+  addField('public_id', publicId);
+  addField('timestamp', timestamp.toString());
+  addField('api_key', apiKey);
+  addField('signature', signature);
+  addField('resource_type', 'raw');
+
+  // Add file as binary
+  parts.push(
+    Buffer.from(`--${boundary}${CRLF}Content-Disposition: form-data; name="file"; filename="${fileName}"${CRLF}Content-Type: application/pdf${CRLF}${CRLF}`, 'utf8'),
+    fileBuffer,
+    Buffer.from(CRLF, 'utf8')
+  );
+
+  // Close boundary
+  parts.push(Buffer.from(`--${boundary}--${CRLF}`, 'utf8'));
+
+  const payload = Buffer.concat(parts);
 
   const result = await httpsRequest({
     hostname: 'api.cloudinary.com',
     path: `/v1_1/${cloudName}/raw/upload`,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(payload),
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      'Content-Length': payload.length,
     },
   }, payload);
 
