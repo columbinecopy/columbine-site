@@ -386,7 +386,7 @@ footer strong{color:var(--gold)}
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
       <div class="option-group">
         <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
-        <select id="bindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+        <select id="bindingSelect" onchange="updateAddToCartBtn()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
           <option value="" disabled selected>— Select binding option —</option>
           <option value="none">No binding</option>
           <option value="comb">🗂 Comb binding ($3.00)</option>
@@ -488,7 +488,7 @@ footer strong{color:var(--gold)}
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
       <div class="option-group" style="margin-bottom:.75rem">
         <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
-        <select id="largeBindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+        <select id="largeBindingSelect" onchange="updateAddToCartBtn()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
           <option value="" disabled selected>— Select binding option —</option>
           <option value="no">No binding</option>
           <option value="yes">Yes — include binding (no extra charge)</option>
@@ -1254,9 +1254,13 @@ function resetForm() {
   document.getElementById('largeCopies').value=1;
   document.querySelector('input[name="lPageRange"][value="all"]').checked=true;
   document.getElementById('lCustomRangeArea').style.display='none';
-  document.querySelector('input[name="largeBinding"][value="no"]').checked=true;
-  // Reset toggles
-  ['binding','lamination','hole','largeLamination'].forEach(id=>{
+  // Reset binding dropdowns
+  const smallBindSel = document.getElementById('bindingSelect');
+  if (smallBindSel) smallBindSel.value = '';
+  const largeBindSel = document.getElementById('largeBindingSelect');
+  if (largeBindSel) largeBindSel.value = '';
+  // Reset toggles (lamination, hole punch)
+  ['lamination','hole','largeLamination'].forEach(id=>{
     const cb=document.getElementById(id); if(!cb)return;
     cb.checked=false;
     const row=document.getElementById(id+'Toggle'); if(row)row.classList.remove('checked');
@@ -1278,7 +1282,7 @@ function resetForm() {
 
 // ---- SQUARE PAYMENT ----
 const SQUARE_APP_ID      = 'sq0idp-R9VagBVL9Jyqnvgs60MzVQ';
-const SQUARE_LOCATION_ID = 'LESH67YP1ERSX';
+const SQUARE_LOCATION_ID = 'LYFKKSNCMBCVD';
 const BACKEND_URL        = '/.netlify/functions/create-payment';
 let squareCard=null;
 
