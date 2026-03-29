@@ -1087,6 +1087,11 @@ function addToCart() {
       return;
     }
   }
+  // When editing, preserve the original file object if no new file was uploaded
+  if (editingIndex >= 0 && !currentFile.file && cart[editingIndex]) {
+    currentFile.file = (window.uploadedFiles||[]).find(f=>f.name===cart[editingIndex].fileName)?.file || null;
+    currentFile.pageCount = currentFile.pageCount || cart[editingIndex].totalPages;
+  }
   const settings = getCurrentSettings();
   settings.price = calcItemPrice(settings);
   if (editingIndex >= 0) {
@@ -1108,49 +1113,69 @@ function editCartItem(idx) {
   const item = cart[idx];
   if (!item) return;
   editingIndex = idx;
+
   // Restore format
   selectFormat(item.format);
-  // Restore settings
-  if (item.format==='small') {
-    document.getElementById('paperSize').value=item.paperSize;
-    document.getElementById('smallPaperWeight').value=item.paperWeight;
-    document.getElementById('copies').value=item.copies;
-    document.querySelector('input[name="color"][value="'+item.color+'"]').checked=true;
-    document.querySelector('input[name="sides"][value="'+item.sides+'"]').checked=true;
+
+  if (item.format === 'small') {
+    document.getElementById('paperSize').value = item.paperSize;
+    document.getElementById('smallPaperWeight').value = item.paperWeight;
+    document.getElementById('copies').value = item.copies;
+    // color
+    const colorBtn = document.querySelector('input[name="color"][value="'+item.color+'"]');
+    if (colorBtn) colorBtn.checked = true;
+    // sides
+    const sidesBtn = document.querySelector('input[name="sides"][value="'+item.sides+'"]');
+    if (sidesBtn) sidesBtn.checked = true;
     // binding
-    document.getElementById('binding').checked=item.binding;
-    document.getElementById('bindingToggle').classList.toggle('checked',item.binding);
-    document.getElementById('bindingOptions').style.display=item.binding?'block':'none';
-    if(item.binding) document.querySelector('input[name="bindType"][value="'+item.bindType+'"]').checked=true;
-    // lamination
-    document.getElementById('lamination').checked=item.lamination;
-    document.getElementById('laminationToggle').classList.toggle('checked',item.lamination);
-    document.getElementById('laminationOptions').style.display=item.lamination?'block':'none';
-    if(item.lamination) 
-    // hole
-    document.getElementById('hole').checked=item.holePunch;
-    document.getElementById('holeToggle').classList.toggle('checked',item.holePunch);
-    document.getElementById('fileNotes').value=item.notes||'';
+    document.getElementById('binding').checked = item.binding;
+    document.getElementById('bindingToggle').classList.toggle('checked', item.binding);
+    document.getElementById('bindingOptions').style.display = item.binding ? 'block' : 'none';
+    if (item.binding) {
+      const bindBtn = document.querySelector('input[name="bindType"][value="'+item.bindType+'"]');
+      if (bindBtn) bindBtn.checked = true;
+    }
+    // lamination — simple yes/no now
+    document.getElementById('lamination').checked = item.lamination;
+    document.getElementById('laminationToggle').classList.toggle('checked', item.lamination);
+    // hole punch
+    document.getElementById('hole').checked = item.holePunch;
+    document.getElementById('holeToggle').classList.toggle('checked', item.holePunch);
+    // notes
+    document.getElementById('fileNotes').value = item.notes || '';
+    // page ranges
+    if (item.ranges) restoreRanges('smallRangeList', item.ranges, item.allPages);
   } else {
-    document.getElementById('largePaperSize').value=item.paperSize;
-    document.getElementById('largePaperType').value=item.mediaType;
-    document.getElementById('largeCopies').value=item.copies;
-    document.querySelector('input[name="largeColor"][value="'+item.color+'"]').checked=true;
-    document.querySelector('input[name="largeBinding"][value="'+( item.binding?'yes':'no')+'"]').checked=true;
-    document.getElementById('largeLamination').checked=item.lamination;
-    document.getElementById('largeLaminationToggle').classList.toggle('checked',item.lamination);
-    document.getElementById('lFileNotes').value=item.notes||'';
+    document.getElementById('largePaperSize').value = item.paperSize;
+    document.getElementById('largePaperType').value = item.mediaType;
+    document.getElementById('largeCopies').value = item.copies;
+    // color
+    const lColorBtn = document.querySelector('input[name="largeColor"][value="'+item.color+'"]');
+    if (lColorBtn) lColorBtn.checked = true;
+    // binding
+    const bindVal = item.binding ? 'yes' : 'no';
+    const lBindBtn = document.querySelector('input[name="largeBinding"][value="'+bindVal+'"]');
+    if (lBindBtn) lBindBtn.checked = true;
+    // lamination
+    document.getElementById('largeLamination').checked = item.lamination;
+    document.getElementById('largeLaminationToggle').classList.toggle('checked', item.lamination);
+    // notes
+    document.getElementById('lFileNotes').value = item.notes || '';
+    // page ranges
+    if (item.ranges) restoreRanges('largeRangeList', item.ranges, item.allPages);
   }
-  document.getElementById('editNotice').style.display='block';
-  document.getElementById('cancelEditBtn').style.display='inline';
-  document.getElementById('addToCartBtn').textContent='💾 Save Changes';
-  // Show note that file needs to be re-attached
-  currentFile = null;
+
+  // Keep the existing file — no need to re-upload just to change options
+  currentFile = { file: null, name: item.fileName, size: 0, pageCount: item.totalPages, pdfDoc: null, detectedSize: item.paperSize };
   const area = document.getElementById('currentFileArea');
-  area.innerHTML='<div style="margin-top:.6rem;padding:.6rem .9rem;background:#fff8e1;border:1px solid #f0c040;border-radius:4px;font-size:.8rem;color:#7a5c00">⚠️ Re-attach the file for <strong>'+item.fileName+'</strong> to save changes</div>';
-  document.getElementById('uploadTitle').textContent='Re-attach: '+item.fileName;
+  area.innerHTML = '<div style="margin-top:.6rem;padding:.6rem .9rem;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;font-size:.8rem;color:#2e7d32">✅ Editing: <strong>'+item.fileName+'</strong> — change options below and click Save</div>';
+  document.getElementById('uploadTitle').textContent = 'Editing: ' + item.fileName;
+
+  document.getElementById('editNotice').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'inline';
+  document.getElementById('addToCartBtn').textContent = '💾 Save Changes';
   updateAddToCartBtn();
-  document.getElementById('mainForm').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('mainForm').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function cancelEdit() {
