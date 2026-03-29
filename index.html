@@ -622,7 +622,7 @@ const PRICING = {
       'letter': 0.00, 'legal': 0.08, 'a4': 0.00, 'tabloid': 0.10,
     },
     // Finishing flat fees per document
-    binding: { comb: 3.00, spiral: 4.00, staple: 0.50 },
+    binding: { comb: 4.00, spiral: 4.00, staple: 0.50 },
     lamination: 1.85, // flat price per page
     holePunch: 3.00,
   },
@@ -1003,9 +1003,9 @@ function calcItemPrice(item) {
     let base=(item.color==='color'?tier.color:tier.bw)+(PRICING.small.paperWeight[item.paperWeight]||0)+(PRICING.small.paperSize[item.paperSize]||0);
     if(item.sides==='double') base*=PRICING.small.doubleSidedMultiplier;
     price=base*totalPrinted;
-    if(item.binding) price+=(PRICING.small.binding[item.bindType]||PRICING.small.binding.comb);
+    if(item.binding) price+=(PRICING.small.binding[item.bindType]||PRICING.small.binding.comb)*copies; // per copy
     if(item.lamination) price+=(PRICING.small.lamination)*pages*copies;
-    if(item.holePunch) price+=PRICING.small.holePunch;
+    if(item.holePunch) price+=PRICING.small.holePunch*copies; // per copy
   } else {
     // Find tier index based on total sheets
     const largeTierIdx = PRICING.large.tiers.findIndex(t => totalPrinted <= t.maxPages);
