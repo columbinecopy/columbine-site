@@ -224,7 +224,7 @@ exports.handler = async function(event) {
             <div style="color:#1a0a2e;font-size:1.4rem;font-weight:700;font-family:monospace;letter-spacing:2px">${orderId}</div>
           </div>
           <p style="color:#333">Total paid: <b>$${totalAmount}</b></p>
-          <p style="color:#555;font-size:.88rem">We will contact you when your order is ready for pickup.</p>
+          <p style="color:#555;font-size:.88rem">Your order will be printed during normal business hours and you will be notified by email once it is ready for pickup — usually within 30 minutes.</p>
           <p style="color:#999;font-size:.78rem;margin-top:24px">Columbine Copy & Apparel · All files are kept confidential and deleted after printing</p>
         </div>
       </div>`
