@@ -1,1371 +1,239 @@
-<!-- Columbine Copy & Apparel v2.0 CART BUILD -- Generated: 2026-03-23 04:07:29 -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Columbine Copy &amp; Apparel — Print Order</title>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-<style>
-:root{
-  --ink:#1a0a2e; --cream:#f4f0fb; --warm:#ece6f7;
-  --gold:#6b27b8; --gold-light:#8b47d8; --rust:#4a13a0;
-  --paper:#ffffff; --mid:#6e5a8a; --border:#d4c8e8;
-  --shadow:rgba(26,10,46,0.10); --green:#1a7a3a; --green-light:#e8f5ed;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Open Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
-header{background:var(--ink);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:72px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--gold)}
-.logo-wrap{display:flex;align-items:center;gap:.85rem}
-.logo-img{height:52px;width:auto;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(139,71,216,0.5))}
-.logo{font-family:'Oswald',sans-serif;font-size:1.25rem;font-weight:700;color:var(--cream);letter-spacing:.5px;line-height:1.1}
-.logo span{color:#c8a0f0}
-.header-tagline{font-size:.78rem;color:var(--mid);letter-spacing:2px;text-transform:uppercase}
-.cart-badge{display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:.4rem .9rem;cursor:pointer;transition:background .15s;color:var(--cream);font-size:.82rem;font-weight:600}
-.cart-badge:hover{background:rgba(255,255,255,.15)}
-.cart-count{background:var(--gold);color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700}
-.hero{background:var(--ink);color:var(--cream);text-align:center;padding:4rem 2rem 3rem;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 100%,rgba(107,39,184,.25) 0%,transparent 70%);pointer-events:none}
-.hero-eyebrow{font-size:.75rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;font-weight:600}
-.hero h1{font-family:'Oswald',sans-serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:900;line-height:1.08;margin-bottom:1rem}
-.hero h1 em{font-style:italic;color:#c8a0f0}
-.hero p{font-size:1rem;color:#c8b8e8;max-width:520px;margin:0 auto;line-height:1.65}
-
-/* FORMAT PICKER */
-.format-picker{max-width:1100px;margin:2rem auto 0;padding:0 2rem}
-.format-picker-inner{background:var(--paper);border:1px solid var(--border);border-radius:6px;box-shadow:0 2px 8px var(--shadow);overflow:hidden}
-.format-picker-header{background:var(--ink);padding:1.25rem 1.5rem}
-.format-picker-header h2{font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--cream);font-weight:700}
-.format-picker-header p{font-size:.82rem;color:#9a8ab0;margin-top:.15rem}
-.format-cards{display:grid;grid-template-columns:1fr 1fr;gap:0}
-@media(max-width:580px){.format-cards{grid-template-columns:1fr}}
-.format-card{cursor:pointer;padding:2rem 1.5rem;border-right:1px solid var(--border);text-align:center;transition:all .2s;position:relative;user-select:none}
-.format-card:last-child{border-right:none}
-.format-card:hover{background:var(--warm)}
-.format-card.selected{background:var(--ink);color:var(--cream)}
-.format-card input{display:none}
-.format-card-icon{font-size:2.5rem;margin-bottom:.75rem;display:block}
-.format-card-title{font-family:'Oswald',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:.4rem}
-.format-card-desc{font-size:.8rem;color:var(--mid);line-height:1.5}
-.format-card.selected .format-card-desc{color:#b8a8d0}
-
-/* STEPS BAR */
-.steps-bar{background:var(--warm);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;justify-content:center;gap:0;flex-wrap:wrap}
-.step-tab{padding:.85rem 1.5rem;font-size:.78rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--mid);border-bottom:3px solid transparent;display:flex;align-items:center;gap:.5rem;transition:all .2s;cursor:default}
-.step-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
-.step-tab.done{color:var(--ink)}
-.step-num{width:22px;height:22px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:var(--mid);flex-shrink:0;transition:all .2s}
-.step-tab.active .step-num{background:var(--gold);color:white}
-.step-tab.done .step-num{background:var(--ink);color:var(--gold)}
-
-main{max-width:1100px;margin:0 auto;padding:2rem 2rem 5rem;display:grid;grid-template-columns:1fr 360px;gap:2.5rem;align-items:start}
-@media(max-width:860px){main{grid-template-columns:1fr}}
-
-.section{background:var(--paper);border:1px solid var(--border);border-radius:4px;margin-bottom:1.5rem;overflow:hidden;box-shadow:0 2px 8px var(--shadow);animation:fadeUp .4s ease both}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.section-header{background:var(--warm);border-bottom:1px solid var(--border);padding:1rem 1.5rem;display:flex;align-items:center;gap:.75rem}
-.section-icon{width:32px;height:32px;background:var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:1rem;flex-shrink:0}
-.section-title{font-family:'Oswald',sans-serif;font-size:1.05rem;font-weight:700;color:var(--ink)}
-.section-body{padding:1.5rem}
-
-/* UPLOAD */
-.upload-zone{border:2.5px dashed var(--border);border-radius:4px;padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--cream)}
-.upload-zone:hover,.upload-zone.dragover{border-color:var(--gold);background:rgba(107,39,184,.04)}
-.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.upload-icon{font-size:2.5rem;margin-bottom:.75rem;display:block}
-.upload-zone h3{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.4rem}
-.upload-zone p{font-size:.82rem;color:var(--mid)}
-.upload-btn{display:inline-block;margin-top:.75rem;padding:.5rem 1.5rem;background:var(--ink);color:var(--cream);border-radius:3px;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase}
-
-/* CURRENT FILE */
-.current-file{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--warm);border:1px solid var(--border);border-radius:4px;margin-top:.75rem;animation:fadeUp .25s ease both}
-.file-thumb-wrap{flex-shrink:0;width:44px;height:56px;border-radius:3px;overflow:hidden;background:#e0d8f0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
-.file-thumb-wrap canvas{width:100%;height:100%;object-fit:cover;display:block}
-.file-info{flex:1;min-width:0}
-.file-name{font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.file-meta{display:flex;align-items:center;gap:.4rem;margin-top:.2rem;flex-wrap:wrap}
-.page-badge{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;background:var(--gold);color:white;padding:.12rem .45rem;border-radius:20px}
-.page-badge.loading{background:var(--border);color:var(--mid);font-weight:500}
-.size-badge{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;background:#2a6496;color:white;padding:.12rem .45rem;border-radius:20px}
-.file-remove{background:none;border:none;cursor:pointer;color:var(--rust);font-size:1rem;padding:.2rem;opacity:.6;transition:opacity .15s;flex-shrink:0}
-.file-remove:hover{opacity:1}
-/* Preview */
-.preview-toggle{background:none;border:1px solid var(--border);border-radius:3px;font-size:.7rem;font-weight:600;color:var(--gold);cursor:pointer;padding:.15rem .5rem;transition:all .15s}
-.preview-toggle:hover{background:var(--gold);color:white;border-color:var(--gold)}
-.pdf-preview-panel{display:none;margin-top:.75rem;border:1px solid var(--border);border-radius:4px;background:#f0ebfc;padding:.75rem}
-.pdf-preview-panel.open{display:block}
-.preview-pages-grid{display:flex;gap:.5rem;flex-wrap:wrap}
-.preview-page-wrap{position:relative;cursor:pointer;border-radius:3px;overflow:hidden;border:2px solid transparent;transition:border-color .15s;background:white;box-shadow:0 1px 4px rgba(0,0,0,.1)}
-.preview-page-wrap:hover{border-color:var(--gold)}
-.preview-page-wrap canvas{display:block;width:90px;height:auto}
-.preview-page-num{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:.6rem;font-weight:700;background:rgba(26,10,46,.65);color:white;padding:.1rem 0}
-.preview-load-more{display:flex;align-items:center;justify-content:center;width:90px;height:116px;border:1.5px dashed var(--border);border-radius:3px;font-size:.72rem;color:var(--mid);cursor:pointer;text-align:center;padding:.4rem;transition:all .15s;line-height:1.4}
-.preview-load-more:hover{border-color:var(--gold);color:var(--gold)}
-
-/* OPTIONS */
-.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-@media(max-width:500px){.options-grid{grid-template-columns:1fr}}
-.option-group{display:flex;flex-direction:column;gap:.4rem}
-.option-group.full{grid-column:1/-1}
-label.field-label{font-size:.78rem;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--mid)}
-.radio-cards{display:flex;gap:.6rem;flex-wrap:wrap}
-.radio-card input{display:none}
-.radio-card label{display:flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border:1.5px solid var(--border);border-radius:3px;cursor:pointer;font-size:.83rem;font-weight:500;color:var(--ink);background:var(--cream);transition:all .15s;user-select:none}
-.radio-card label:hover{border-color:var(--gold);background:rgba(107,39,184,.05)}
-.radio-card input:checked+label{border-color:var(--gold);background:var(--ink);color:var(--cream)}
-input[type=text],input[type=number],input[type=email],select,textarea{width:100%;padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:3px;background:var(--cream);color:var(--ink);font-family:'Open Sans',sans-serif;font-size:.88rem;transition:border-color .15s;outline:none;-webkit-appearance:none}
-input[type=text]:focus,input[type=number]:focus,input[type=email]:focus,select:focus,textarea:focus{border-color:var(--gold);background:var(--paper)}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a6a52' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .8rem center;padding-right:2.2rem;cursor:pointer}
-textarea{resize:vertical;min-height:70px;line-height:1.5}
-.copies-row{display:flex;align-items:center;gap:.5rem}
-.qty-btn{width:34px;height:34px;border:1.5px solid var(--border);border-radius:3px;background:var(--cream);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-weight:600;color:var(--ink);flex-shrink:0}
-.qty-btn:hover{border-color:var(--gold);background:rgba(107,39,184,.08)}
-.qty-input{width:60px!important;text-align:center}
-.divider{height:1px;background:var(--border);margin:1.25rem 0}
-/* Toggles */
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:var(--warm);border:1.5px solid var(--border);border-radius:3px;cursor:pointer;user-select:none;transition:border-color .15s}
-.toggle-row:hover{border-color:var(--gold)}
-.toggle-row.checked{border-color:var(--gold);background:rgba(107,39,184,.06)}
-.toggle-row input{display:none}
-.toggle-label{display:flex;align-items:center;gap:.6rem;font-size:.88rem;font-weight:500}
-.toggle-pill{width:40px;height:22px;border-radius:11px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0}
-.toggle-pill::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:white;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.toggle-row.checked .toggle-pill{background:var(--gold)}
-.toggle-row.checked .toggle-pill::after{transform:translateX(18px)}
-/* Yes/No binding */
-.yn-row{display:flex;gap:.75rem;margin-top:.25rem}
-.yn-card input{display:none}
-.yn-card label{display:flex;align-items:center;justify-content:center;width:80px;padding:.55rem .5rem;border:1.5px solid var(--border);border-radius:3px;cursor:pointer;font-size:.88rem;font-weight:600;background:var(--cream);transition:all .15s;user-select:none}
-.yn-card label:hover{border-color:var(--gold)}
-.yn-card input:checked+label{background:var(--ink);color:var(--cream);border-color:var(--gold)}
-/* Tier notice */
-.tier-notice{font-size:.76rem;color:var(--mid);background:var(--warm);border:1px solid var(--border);border-radius:3px;padding:.45rem .7rem;margin-top:.4rem;line-height:1.5}
-.tier-notice strong{color:var(--gold)}
-/* Multi-range */
-.multi-range-area{display:none;margin-top:.5rem}
-.range-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem}
-.range-entry{display:flex;align-items:center;gap:.5rem;background:var(--warm);border:1px solid var(--border);border-radius:4px;padding:.45rem .7rem}
-.range-entry input[type=number]{width:68px;text-align:center;padding:.35rem .4rem;font-size:.85rem}
-.range-entry .range-sep{color:var(--mid);font-weight:600;flex-shrink:0}
-.range-entry .range-label{font-size:.72rem;font-weight:600;color:var(--mid);min-width:50px;letter-spacing:.3px}
-.range-entry .remove-range{background:none;border:none;color:var(--rust);cursor:pointer;font-size:.95rem;padding:.1rem .3rem;opacity:.5;transition:opacity .15s;flex-shrink:0;margin-left:auto}
-.range-entry .remove-range:hover{opacity:1}
-.range-entry.first-range .remove-range{opacity:.15;cursor:default}
-.add-range-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .85rem;border:1.5px dashed var(--gold);border-radius:3px;background:none;color:var(--gold);font-family:'Open Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
-.add-range-btn:hover{background:rgba(107,39,184,.08)}
-.range-summary{font-size:.76rem;color:var(--mid);margin-top:.5rem;padding:.35rem .6rem;background:var(--warm);border-radius:3px;border:1px solid var(--border)}
-.range-summary strong{color:var(--gold)}
-
-/* ADD TO CART BUTTON */
-.add-to-cart-btn{width:100%;padding:1rem;background:var(--green);color:white;border:none;border-radius:4px;font-family:'Open Sans',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:1.5rem}
-.add-to-cart-btn:hover{background:#145c2a;transform:translateY(-1px);box-shadow:0 4px 16px rgba(26,122,58,.3)}
-.add-to-cart-btn:disabled{background:#aaa;cursor:not-allowed;transform:none;box-shadow:none}
-.edit-notice{background:rgba(107,39,184,.08);border:1.5px solid var(--gold);border-radius:4px;padding:.75rem 1rem;font-size:.82rem;color:var(--gold);font-weight:600;margin-top:1rem;display:none;text-align:center}
-
-/* CART PANEL */
-.cart-panel{background:var(--paper);border:1px solid var(--border);border-radius:4px;box-shadow:0 2px 8px var(--shadow);overflow:hidden;margin-bottom:1.5rem;animation:fadeUp .4s ease both}
-.cart-panel-header{background:var(--ink);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between}
-.cart-panel-header h2{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--cream);font-weight:700;display:flex;align-items:center;gap:.5rem}
-.cart-empty{padding:1.5rem;text-align:center;color:var(--mid);font-size:.85rem;font-style:italic}
-.cart-items{padding:.5rem}
-.cart-item{border:1px solid var(--border);border-radius:4px;margin-bottom:.6rem;overflow:hidden;background:var(--cream)}
-.cart-item-header{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;background:var(--warm);border-bottom:1px solid var(--border)}
-.cart-item-num{width:22px;height:22px;border-radius:50%;background:var(--gold);color:white;font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.cart-item-name{font-weight:600;font-size:.85rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cart-item-price{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:var(--gold);white-space:nowrap}
-.cart-item-body{padding:.6rem .75rem;font-size:.78rem;color:var(--mid);line-height:1.7}
-.cart-item-actions{display:flex;gap:.4rem;padding:.4rem .75rem;border-top:1px solid var(--border);background:var(--warm)}
-.cart-action-btn{flex:1;padding:.35rem .5rem;border-radius:3px;font-family:'Open Sans',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .15s;border:1.5px solid var(--border);background:white;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:.3rem}
-.cart-action-btn:hover{border-color:var(--gold);color:var(--gold)}
-.cart-action-btn.danger:hover{border-color:var(--rust);color:var(--rust)}
-.cart-total-row{display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;border-top:2px solid var(--border);background:var(--warm)}
-.cart-total-label{font-size:.8rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:1px}
-.cart-total-price{font-family:'Oswald',sans-serif;font-size:1.6rem;color:var(--ink);font-weight:700}
-
-/* CHECKOUT PANEL */
-.checkout-panel{background:var(--ink);border-radius:4px;overflow:hidden;box-shadow:0 4px 20px var(--shadow);animation:fadeUp .4s .1s ease both}
-.checkout-panel-header{padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:.6rem}
-.checkout-panel-header h2{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--cream);font-weight:700}
-.checkout-body{padding:1.25rem}
-.checkout-field{margin-bottom:.85rem}
-.checkout-field label{display:block;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9a8ab0;margin-bottom:.3rem}
-.checkout-field input,.checkout-field textarea{background:#2a1a4a;border-color:#4a2a7a;color:var(--cream)}
-.checkout-field input:focus,.checkout-field textarea:focus{border-color:var(--gold-light);background:#321a5a}
-.checkout-field input::placeholder,.checkout-field textarea::placeholder{color:#6a5a88}
-.checkout-total{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-top:1px solid rgba(200,152,42,.3);margin-bottom:1rem}
-.checkout-total-label{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold);font-weight:600}
-.checkout-total-price{font-family:'Oswald',sans-serif;font-size:1.8rem;color:#c8a0f0;font-weight:700}
-#card-container{background:#2a1a4a;border:1.5px solid #4a2a7a;border-radius:4px;padding:.75rem;min-height:60px;margin-bottom:.75rem}
-#payment-status{font-size:.78rem;margin-bottom:.5rem;min-height:1.2em;color:#f07030;text-align:center}
-.submit-btn{width:100%;padding:.9rem;background:var(--gold);color:var(--cream);border:none;border-radius:3px;font-family:'Open Sans',sans-serif;font-size:.88rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
-.submit-btn:hover{background:var(--gold-light);transform:translateY(-1px);box-shadow:0 4px 16px rgba(107,39,184,.35)}
-.submit-btn:disabled{background:#4a3a28;color:#6a5a48;cursor:not-allowed;transform:none;box-shadow:none}
-.trust-badges{display:flex;justify-content:center;gap:1rem;margin-top:.75rem;flex-wrap:wrap}
-.badge{font-size:.7rem;color:#6a5a48;display:flex;align-items:center;gap:.3rem}
-.cart-required-note{font-size:.75rem;color:#9a8ab0;text-align:center;margin-top:.75rem;font-style:italic}
-
-/* LIGHTBOX */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .2s}
-.lightbox.open{opacity:1;pointer-events:all}
-.lightbox canvas{max-width:min(90vw,900px);max-height:90vh;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);display:block}
-.lightbox-close{position:absolute;top:1rem;right:1.25rem;font-size:2rem;color:white;cursor:pointer;opacity:.7;transition:opacity .15s;background:none;border:none}
-.lightbox-close:hover{opacity:1}
-.lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;font-size:1.8rem;padding:.5rem .9rem;cursor:pointer;border-radius:3px;transition:background .15s}
-.lightbox-nav:hover{background:rgba(255,255,255,.3)}
-#lbPrev{left:1rem}#lbNext{right:1rem}
-.lightbox-info{position:absolute;bottom:1.25rem;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:.85rem;white-space:nowrap}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(26,10,46,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:2rem;opacity:0;pointer-events:none;transition:opacity .3s}
-.modal-overlay.visible{opacity:1;pointer-events:all}
-.modal{background:var(--paper);border-radius:6px;padding:3rem 2.5rem;max-width:460px;width:100%;text-align:center;transform:translateY(20px) scale(.97);transition:transform .3s;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.modal-overlay.visible .modal{transform:translateY(0) scale(1)}
-.modal-icon{font-size:3rem;margin-bottom:1rem;display:block}
-.modal h2{font-family:'Oswald',sans-serif;font-size:1.8rem;font-weight:900;margin-bottom:.75rem}
-.modal p{font-size:.9rem;color:var(--mid);line-height:1.6;margin-bottom:.5rem}
-.order-ref{display:inline-block;margin:1rem 0;padding:.5rem 1.25rem;background:var(--ink);color:var(--gold);font-family:monospace;font-size:1.1rem;font-weight:700;border-radius:3px;letter-spacing:2px}
-.modal-close{margin-top:1.5rem;padding:.75rem 2rem;background:var(--ink);color:var(--cream);border:none;border-radius:3px;font-family:'Open Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:background .15s}
-.modal-close:hover{background:var(--gold);color:var(--cream)}
-footer{background:var(--ink);color:#5a4a38;text-align:center;padding:2rem;font-size:.8rem;border-top:3px solid var(--gold)}
-footer strong{color:var(--gold)}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo-wrap">
-    <img src="data:image/png;base64,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/M199923XPcTTzxRfn/KlCnl8Si1aenSpbq2trZc9r777iuX7UmHe++9t/x833333ao5T55//vllAHDllVfyzDPPYNs2pmlimiZCCP74xz9yySWXlGf2GWecgVIKy7K45JJLeP3118tlLMtCCMHll1/Oa6+9hhCCvn37ctRRR5UX+c9U9yoCm9///veEw+EylzQ2NvLTn/4UANu2t1t1KV0TJkwoA61FixZtE8htqU0AI0eO5N577y1z6/aoH/F4fIvtMQwDc+zYsQghKBQKPPzww0gpe4m3EpoSQuD7PpWVlYwePRopJclkklmzZm1WxrIsPM/j3nvvZf/99w/iRidP5q677vrsvAdF8dPR0VFu80UXXcS1114LwLXXXktlZSVtbW3k83kGDRq0Vd2urq6ORx55pIyM6+rqmDhxIkIIlixZwsUXX7wZat/WpHjjjTfo378/gwcP5vDDD2fGjBlccMEFW53oPRHujBkzSCQSZTErhCCdTnPyySdjVlQE53Wk02lSqRRKqc2oXpo5ABUVFUSjQUBvMpkkk8lsVqY0KM3NzeXGVFdXfywl/tNevu9jmiYPP/ww1dXVHHPMMfz0pz/ltttuY+jQoZx88skAXHPNNUydOpVBgwZtpiqU+hSJRDjyyCO3WE9LSwu+738szpw/fz4XXHABs2fPxnEczj//fF544QXa2to+coKOHTt2i79FIhHMZDJJTU0NlZWV1NTU0N3d3cuC09OyI4QgmUySTqeJxWLU1tZSVVWF67qbldFaM3jw4HIjOjo6ttuSsSXRZhjGxlSi2+jslkDUj370I771rW8Ri8W46aabaGhoAGDBggXcfPPNnHTSSdv8XiKR4LrrrisDINM02XPPPTn22GM58MADefXVV9l7771pbm7erv7V19fz1ltvceGFFzJjxgx83+euu+5i3bp1W9UlSxLyb3/7G01NTcEphz2AViKRgGeffVYrpbTWWl911VVlkFG6t7TQ9ixz4YUXakBblqVN0yzreoCeN29e+b0TTjhBA3rw4MFlAPThhx+WAUnPOxQKaSGEPumkk8oL/wMPPKABbdu2DoVCGtC77rqr9jxPK6X0W2+9Va53zJgxZZBx7733akD//ve/3wzOT506VQN67ty5ZaCzvQCo9E3f97XWWp977rka0AcccMA2AZDWWt9///1lNemWW27RWuvyd0r/3xoA2hLYLOnM8ne/+13ZUnLppZfy7W9/G8/zyrdhGFx77bXcc8895YX7pptuQgiB67pcffXVHHXUUbiui+d5uK5LPB7njjvuYPz48QghWLVqFY899lhZZPfkmpKI6nkXCgW01syZMwff91FKMXXqVMaPH4/jOGXIf+mll5bX89mzZ2+RQ0vr3FVXXcXatWtxHAetNbNmzeLJJ58s9/3TrMu+79OvX7+PVbYEIM8991xeeuklpJRbVL8+Coj1/J75xBNPcMstt3DWWWchhODvf/87Z599NnPnzsUwDA444AD22GOPMrA56aSTmDlzJv/4xz/49re/jWEYPPLII7zwwgu89957xONxDjnkEIYPH16u6IwzziCdTm+mAw4cOJB77rlni+a1n/zkJzQ1NfHwww9z7LHHEolEeP7555k1axadnZ1MnjyZKVOmlL93yy239DLb+b5fHmitNYlEgosuuogHH3wQpRQXX3xx+f1SezZd90rPY7EYV199Na7rlgdz9OjRZd3cNE3efPPNXmU2nbg9TXs9TX++73P88cfz1ltvMWjQIAqFQhmBb1pWKcWll17KunXrtmyilFJqKaW+6aabtmlhWLVqlf7GN76hhRDaMAxtWZa+/fbbt1mmtbVVH3300ZtZgLbnKpkC6+vr9ezZs7f6nu/7+tRTT+1VR08LUEk8l34755xzym0qibr3339fa611V1eXjsfjGtBVVVU6k8lsV1tvvvnm8rd6WnpeeOGFshjsKX4fffTRzXTeSZMmlfXdnksAoB955JHtaodZou4555zDP//5T7773e8yYcIEqqur8X2fNWvW8PTTT3PbbbfR2tpaTIgUzL4zzzyT+++/n+9+97vsvffeVFVV4fs+69at4+mnn+aOO+5g/fr1vWB7oVDg6aefJhQKbdPQnkgkAGhra+Pggw/mnHPO4eijj6axsRHDMOju7mbu3Ln86U9/Ys6cOb0M1+l0mueffx7TNHnvvfd6icSbbrppM0/Ja6+9RmdnJ62trWWR63kezzzzDNXV1VtsZy6XY9myZTz22GM8++yzZXDW1dXFSy+9hBCCOXPmlN/v+XzevHm9pJRpmsyZM4dTTjmFs846q9zv0jVv3jxqamrKbdPbOI1Bb8nyH4/H8X2fbDa7Ve9AibCl32Kx2GZltlf/2l73VDQaxTCMskr0cV1KW/KOfBZuts/CLbaZP3NTu2DJddPTJbOp5eHjlpHbEQ3cs2Nb+962fKalOrbHud6zPZsaSz6q3JYmxtbq/qg2ba0dPdXDjx028nEiAT5NmU/KBZ9FPf+vHeb/VTFAmzp2/Z2UBGdrzuCPcnh/UnXkv3qS7AxifpT839rM3NSrv+l7O3JG9/xWTzvnluKAennztyNuaNP3N33Psiy01jt8Qu3w7QklQk6dOpVLLrmEo48+msrKShYvXozWuhehS2vepoO76fOtEbJkWjv//PM5+eSTyefzZV/f1ta3SZMmccIJJ/D666/3TkW+lfp7lu35757PNn1/02+V+lvyW1555ZXss88+vPbaa5imuUPjgXZYeHxJ17rmmmv0kiVL9MUXX6x/8IMf6JdfflmfeOKJ5fdqa2s3htQLUfZD2ratKysry+bB0vPSHQqFyvpi6f+//OUv9axZs/TkyZP14sWL9dChQzcLbekZWVCKjhg3blw5+qBkHuxZf6k/pXKbthnQsVhMV1VVbfH9klmwpLOWwlGEEPqmm27S1113Xa9+7Ijb3NEcOWHCBM4880xGjx5d1hVvvfVWQqEQ/fv357bbbqOqqgrbtrn++uuZOXMml1xyCZMmTUJKSV1dHa+99hrXXnstM2fOZNq0aXR2dtKvXz/uvPNOjjvuuLI1SQhBa2sr69evx7ZtmpubSSQSmxmrS0j4oIMOwrZtzj77bK666iqmT58OwGWXXcakSZPwfb9sBD///POpqanh3nvvJZFI0K9fPyKRCD/5yU94/vnnueGGG5g8eTKGYfDOO+9w3nnn0b9/f+655x4cx2HBggVcdNFFXH/99UycOLFsKStFNuysNXvHzIriDLv00kv1fffdpwEdDoe1aZplDnv88cf1H/7wBx2LxfTBBx+sm5ubdWVlpf7tb3+rFy9erPv376/79Omj3333XX3SSSfpW2+9Vf/85z8vc+DNN99crqskBcaOHauz2azO5XK6vr5eAzoSiWyRK++//349bdq0shNg9OjRGtB//vOf9aJFi8r1z5s3T59zzjka0J7n6YsvvlhHo1E9ffp0vWLFCl1dXa3Hjx+va2trdW1trV6xYoX+0pe+pMPhcNnoHo/H9emnn67feOMNXVVVpfv376+XL1+ux40bp6+55pr/bs4sXe3t7WWjc8lwXAq73GWXXTjxxBPJZDK8+OKLLFiwgL322otCocAdd9zBhg0bAPj973/PUUcdxSWXXMJjjz3GjTfeyOGHH86JJ57YS08bM2YMf//73/nqV7/KCSecwOWXX05bWxudnZ3ccsstvfTQxsZGpk6dyocffsjAgQMJh8Oce+65nH/++YTDYW666aZy/TfccAPHHXccN998M4sWLeK3vw3yHjz00ENcdtll7LrrrjQ0NPDTn/6UZDKJ67pUV1djmibLli3jjjvuoFAosO+++5LNZrnxxhsRQtDU1MSQIUPKDowdDjx3pDNYCMHMmTMZOXIk3/3ud8vG6wMOOIDRo0ezdu3aslN4wIAB7LbbbixduhTDMPj6179e/tb06dNZuXIlq1atYtmyZfzjH/9g3rx5LFu2rFec7BFHHEGhUODVV1/l3HPPpbGxkWuuuYZnnnmmTPQSULnooot48803CYfDNDY2MnPmTL75zW9iWRbJZJJp06aV6z/xxBP54IMPyj7Zb3zjGwCMGzeO2tpaXNflz3/+MxdddBHnnnsu2Wy2TBwpJfF4vByFYNs2F110Eeeddx6XXnopjz/+ODU1NTsvCHpnrJt/+ctfSKVSOI5D//79+d73vkdnZyf/+te/WLVqFYMGDeL+++/nuuuu44YbbmDatGm89957ZRvktGnTSKVSHHDAAbzyyivstddezJ8/vxcarq+v57777sN13bJTPZ/Ps379ei677DJMMzjzq6GhgVdeeYUvfelLQRRb8Zo5cyZPPPEEDQ0NnHrqqeX6fd9n2rRp5fVw7dq1JBIJRo8ezYwZM7jtttt48MEHcRyHjo4Ojj76aL7//e/zyiuv8M4777D33nvT3d1NJBLh7rvvpq6ujlwuh+/7HHXUUcyYMYN0Os0VV1xRbuN/HZrtifQAvc8+++gpU6aU0WIJke6333568ODB5fdvu+02femll+qRI0fqKVOm9EKK06ZN088991wvtLzpPWnSJL3//vuX18q+ffv2aks8Hi/XV3Kgm6apa2pq9IABA/Sf//xnfcEFF+iRI0f2cv7269dPz5s3T9fX1+spU6boxsbGXvXut99+epdddtF1dXW6oqJCSyn1kCFDNmvnXnvtpSdPnlxeH+vr63VdXd1m47UD7h2/g3dLg15ytW2qagD6D3/4QznKu9TBiRMn6nfeeUcvWLCgHGS8afktDcTWCL6tgbv11lv1xRdf3Os9IYTu06ePfuutt3qpK1uKjN9Wfdtqz46+/z+8hlNWLyNK/AAAAABJRU5ErkJggg==" alt="Columbine Copy &amp; Apparel" class="logo-img">
-    <div>
-      <div class="logo">COLUMBINE <span>COPY &amp; APPAREL</span></div>
-      <div class="header-tagline">Professional Printing Services</div>
-    </div>
-  </div>
-  <div class="cart-badge" onclick="scrollToCart()">
-    🛒 Cart <span class="cart-count" id="cartCount">0</span>
-  </div>
-</header>
-
-<div class="hero">
-  <p class="hero-eyebrow">Upload · Configure · Add to Cart · Checkout</p>
-  <h1>Print Orders,<br><em>Done Right</em></h1>
-  <p>Configure each file individually, add them to your cart, then check out all at once.</p>
-</div>
-
-<!-- FORMAT PICKER -->
-<div class="format-picker">
-  <div class="format-picker-inner">
-    <div class="format-picker-header">
-      <h2>Step 1 — Choose Your Print Format</h2>
-      <p>Select a format first to see the right options for your job</p>
-    </div>
-    <div class="format-cards">
-      <div class="format-card" id="card-small" onclick="selectFormat('small')">
-        <input type="radio" name="format" value="small" id="fmt-small">
-        <span class="format-card-icon">📄</span>
-        <div class="format-card-title">Small Format</div>
-        <div class="format-card-desc">Documents, flyers, reports<br>Up to 11×17" (Tabloid)</div>
-      </div>
-      <div class="format-card" id="card-large" onclick="selectFormat('large')">
-        <input type="radio" name="format" value="large" id="fmt-large">
-        <span class="format-card-icon">🗺</span>
-        <div class="format-card-title">Large Format</div>
-        <div class="format-card-desc">Blueprints, plans, posters<br>Arch A – Arch E &amp; ANSI sizes</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MAIN FORM -->
-<div id="mainForm" style="display:none">
-<div class="steps-bar">
-  <div class="step-tab done" id="tab0"><div class="step-num">✓</div> Format</div>
-  <div class="step-tab active" id="tab1"><div class="step-num">2</div> Upload</div>
-  <div class="step-tab" id="tab2"><div class="step-num">3</div> Options</div>
-  <div class="step-tab" id="tab3"><div class="step-num">4</div> Cart</div>
-  <div class="step-tab" id="tab4"><div class="step-num">5</div> Checkout</div>
-</div>
-
-<main>
-<div class="left-col">
-
-  <!-- UPLOAD -->
-  <div class="section">
-    <div class="section-header">
-      <div class="section-icon">📄</div>
-      <div class="section-title" id="uploadTitle">Upload Your PDF</div>
-    </div>
-    <div class="section-body">
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept=".pdf">
-        <span class="upload-icon">📁</span>
-        <h3>Drop your PDF here</h3>
-        <p>or click to browse — one file at a time</p>
-        <span class="upload-btn">Choose PDF File</span>
-      </div>
-      <div id="currentFileArea"></div>
-    </div>
-  </div>
-
-  <!-- SMALL FORMAT OPTIONS -->
-  <div class="section" id="small-options" style="display:none">
-    <div class="section-header"><div class="section-icon">⚙️</div><div class="section-title">Print Options — Small Format</div></div>
-    <div class="section-body">
-      <div class="options-grid">
-        <div class="option-group">
-          <label class="field-label">Color Mode</label>
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="color" id="bw" value="bw" checked><label for="bw">⬛ B&amp;W</label></div>
-            <div class="radio-card"><input type="radio" name="color" id="clr" value="color"><label for="clr">🎨 Color</label></div>
-          </div>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Paper Size</label>
-          <select id="paperSize">
-            <option value="letter">Letter (8.5"×11")</option>
-            <option value="legal">Legal (8.5"×14")</option>
-            <option value="a4">A4 (210×297mm)</option>
-            <option value="tabloid">Tabloid (11"×17")</option>
-          </select>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Sides</label>
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="sides" id="single" value="single" checked><label for="single">📃 Single</label></div>
-            <div class="radio-card"><input type="radio" name="sides" id="double" value="double"><label for="double">📋 Double</label></div>
-          </div>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Paper Weight</label>
-          <select id="smallPaperWeight">
-            <option value="20lb">Standard (20lb)</option>
-            <option value="28lb">Premium (28lb)</option>
-            <option value="cardstock">Cardstock</option>
-          </select>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Copies</label>
-          <div class="copies-row">
-            <button class="qty-btn" id="qtyMinus">−</button>
-            <input type="number" class="qty-input" id="copies" value="1" min="1" max="999">
-            <button class="qty-btn" id="qtyPlus">+</button>
-          </div>
-          <div class="tier-notice" id="tierNotice">—</div>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Orientation</label>
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="orient" id="portrait" value="portrait" checked><label for="portrait">🖼 Portrait</label></div>
-            <div class="radio-card"><input type="radio" name="orient" id="landscape" value="landscape"><label for="landscape">🖼 Landscape</label></div>
-          </div>
-        </div>
-        <div class="option-group full">
-          <label class="field-label">Page Range</label>
-          <div class="radio-cards" style="margin-bottom:.6rem">
-            <div class="radio-card"><input type="radio" name="pageRange" id="allPages" value="all" checked><label for="allPages">All Pages</label></div>
-            <div class="radio-card"><input type="radio" name="pageRange" id="customPages" value="custom"><label for="customPages">Custom Ranges</label></div>
-          </div>
-          <div id="customRangeArea" class="multi-range-area">
-            <div class="range-list" id="rangeList">
-              <div class="range-entry first-range" data-id="0">
-                <span class="range-label">Range 1</span>
-                <input type="number" class="range-from" placeholder="From" min="1">
-                <span class="range-sep">—</span>
-                <input type="number" class="range-to" placeholder="To" min="1">
-                <button class="remove-range" onclick="removeRange('rangeList',this)">✕</button>
-              </div>
-            </div>
-            <button class="add-range-btn" onclick="addRange('rangeList')">+ Add Another Range</button>
-            <div class="range-summary" id="rangeSummary">e.g. 1–5, 9–11, 22–48</div>
-          </div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
-      <div class="option-group">
-        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
-        <select id="bindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
-          <option value="" disabled selected>— Select binding option —</option>
-          <option value="none">No binding</option>
-          <option value="comb">🗂 Comb binding ($3.00)</option>
-          <option value="spiral">🌀 Spiral / Coil ($4.00)</option>
-          <option value="staple">📎 Staple ($0.50)</option>
-        </select>
-      </div>
-      <div style="margin-top:.5rem">
-        <div class="toggle-row" id="laminationToggle" onclick="toggleOption('lamination')">
-          <input type="checkbox" id="lamination">
-          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Protective finish</div></div></div>
-          <div class="toggle-pill"></div>
-        </div>
-        
-      </div>
-      <div style="margin-top:.5rem">
-        <div class="toggle-row" id="holeToggle" onclick="toggleOption('hole')">
-          <input type="checkbox" id="hole">
-          <div class="toggle-label"><span>⭕</span><div><div style="font-weight:600;font-size:.88rem">Hole Punch</div><div style="font-size:.73rem;color:var(--mid)">3-hole for binders</div></div></div>
-          <div class="toggle-pill"></div>
-        </div>
-      </div>
-      <div class="option-group full" style="margin-top:1rem">
-        <label class="field-label">Notes for this file</label>
-        <textarea id="fileNotes" placeholder="Any special instructions for this specific file..."></textarea>
-      </div>
-    </div>
-  </div>
-
-  <!-- LARGE FORMAT OPTIONS -->
-  <div class="section" id="large-options" style="display:none">
-    <div class="section-header"><div class="section-icon">🗺</div><div class="section-title">Print Options — Large Format</div></div>
-    <div class="section-body">
-      <div class="options-grid">
-        <div class="option-group full">
-          <label class="field-label">Paper Size</label>
-          <select id="largePaperSize">
-            <option value="arch-a">Arch A (9"×12")</option>
-            <option value="arch-b">Arch B (12"×18")</option>
-            <option value="arch-c">Arch C (18"×24")</option>
-            <option value="arch-d">Arch D (24"×36")</option>
-            <option value="arch-e">Arch E (36"×48")</option>
-            <option value="arch-e1">Arch E1 (30"×42")</option>
-            <option value="arch-e2">Arch E2 (26"×38")</option>
-            <option value="arch-e3">Arch E3 (27"×39")</option>
-            <option value="ansi-c">ANSI C (17"×22")</option>
-            <option value="ansi-d">ANSI D (22"×34")</option>
-            <option value="ansi-e">ANSI E (34"×44")</option>
-          </select>
-        </div>
-        <div class="option-group full">
-          <label class="field-label">Media Type</label>
-          <select id="largePaperType">
-            <option value="bond20">Standard Bond (20lb)</option>
-            <option value="bond36">Heavyweight Bond (36lb)</option>
-            <option value="mylar">Mylar Film</option>
-            <option value="vellum">Vellum</option>
-            <option value="photo">Photo Paper (Glossy)</option>
-          </select>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Copies</label>
-          <div class="copies-row">
-            <button class="qty-btn" id="lqtyMinus">−</button>
-            <input type="number" class="qty-input" id="largeCopies" value="1" min="1" max="999">
-            <button class="qty-btn" id="lqtyPlus">+</button>
-          </div>
-          <div class="tier-notice" id="largeTierNotice">—</div>
-        </div>
-        <div class="option-group">
-          <label class="field-label">Color Mode</label>
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="largeColor" id="lbw" value="bw" checked><label for="lbw">⬛ B&amp;W</label></div>
-            <div class="radio-card"><input type="radio" name="largeColor" id="lclr" value="color"><label for="lclr">🎨 Color</label></div>
-          </div>
-        </div>
-        <div class="option-group full">
-          <label class="field-label">Page Range</label>
-          <div class="radio-cards" style="margin-bottom:.6rem">
-            <div class="radio-card"><input type="radio" name="lPageRange" id="lAllPages" value="all" checked><label for="lAllPages">All Pages</label></div>
-            <div class="radio-card"><input type="radio" name="lPageRange" id="lCustomPages" value="custom"><label for="lCustomPages">Custom Ranges</label></div>
-          </div>
-          <div id="lCustomRangeArea" class="multi-range-area">
-            <div class="range-list" id="lRangeList">
-              <div class="range-entry first-range" data-id="0">
-                <span class="range-label">Range 1</span>
-                <input type="number" class="range-from" placeholder="From" min="1">
-                <span class="range-sep">—</span>
-                <input type="number" class="range-to" placeholder="To" min="1">
-                <button class="remove-range" onclick="removeRange('lRangeList',this)">✕</button>
-              </div>
-            </div>
-            <button class="add-range-btn" onclick="addRange('lRangeList')">+ Add Another Range</button>
-            <div class="range-summary" id="lRangeSummary">e.g. 1–5, 9–11, 22–48</div>
-          </div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
-      <div class="option-group" style="margin-bottom:.75rem">
-        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
-        <select id="largeBindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
-          <option value="" disabled selected>— Select binding option —</option>
-          <option value="no">No binding</option>
-          <option value="yes">Yes — include binding (no extra charge)</option>
-        </select>
-      </div>
-      <div style="margin-top:.5rem">
-        <div class="toggle-row" id="largeLaminationToggle" onclick="toggleOption('largeLamination')">
-          <input type="checkbox" id="largeLamination">
-          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Priced per sq ft</div></div></div>
-          <div class="toggle-pill"></div>
-        </div>
-      </div>
-      <div class="option-group full" style="margin-top:1rem">
-        <label class="field-label">Notes for this file</label>
-        <textarea id="lFileNotes" placeholder="Any special instructions for this specific file..."></textarea>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADD TO CART -->
-  <div id="addToCartArea" style="display:none">
-    <div id="editNotice" class="edit-notice">✏️ Editing cart item — save changes below or cancel</div>
-    <button class="add-to-cart-btn" id="addToCartBtn" onclick="addToCart()" disabled>
-      🛒 Add to Cart
-    </button>
-    <div style="text-align:center;margin-top:.5rem">
-      <button id="cancelEditBtn" onclick="cancelEdit()" style="display:none;background:none;border:none;color:var(--mid);font-size:.8rem;cursor:pointer;text-decoration:underline">Cancel edit</button>
-    </div>
-  </div>
-
-</div><!-- /left-col -->
-
-<!-- RIGHT COLUMN: CART + CHECKOUT -->
-<div class="right-col">
-
-  <!-- CART -->
-  <div class="cart-panel" id="cartPanel">
-    <div class="cart-panel-header">
-      <h2>🛒 Your Cart <span id="cartItemCount" style="font-size:.8rem;color:#9a8ab0;font-weight:400"></span></h2>
-    </div>
-    <div id="cartItemsArea">
-      <div class="cart-empty" id="cartEmpty">No items yet — configure a file and add it to your cart.</div>
-    </div>
-    <div id="cartTotalRow" style="display:none">
-      <div style="text-align:right;padding:4px 0;font-size:0.85rem;color:#9a8ab0" id="cartSubtotalLine"></div>
-      <div style="text-align:right;padding:4px 0;font-size:0.85rem;color:#9a8ab0" id="cartTaxLine"></div>
-      <div class="cart-total-row">
-        <div class="cart-total-label">Total (incl. tax)</div>
-        <div class="cart-total-price" id="cartTotalPrice">$0.00</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHECKOUT -->
-  <div class="checkout-panel" id="checkoutPanel">
-    <div class="checkout-panel-header"><span style="font-size:1rem">💳</span><h2>Checkout</h2></div>
-    <div class="checkout-body">
-      <div class="checkout-field"><label>First Name</label><input type="text" id="firstName" placeholder="Jane"></div>
-      <div class="checkout-field"><label>Last Name</label><input type="text" id="lastName" placeholder="Smith"></div>
-      <div class="checkout-field"><label>Email Address</label><input type="email" id="email" placeholder="jane@example.com"></div>
-      <div class="checkout-field"><label>Phone (optional)</label><input type="text" id="phone" placeholder="+1 (555) 000-0000"></div>
-      <div class="checkout-field"><label>Order Notes</label><textarea id="orderNotes" placeholder="Any overall order notes..."></textarea></div>
-      <div class="checkout-total">
-        <div><div class="checkout-total-label">Order Total</div><div style="font-size:.7rem;color:#6a5a48;margin-top:.2rem">Final price confirmed at pickup</div></div>
-        <div class="checkout-total-price" id="checkoutTotalPrice">$0.00</div>
-      </div>
-      <div id="paymentSection" style="display:none">
-        <div id="card-container"></div>
-        <div id="payment-status"></div>
-        <button class="submit-btn" id="card-button" disabled>🔒 Pay &amp; Place Order</button>
-      </div>
-      <button class="submit-btn" id="checkoutBtn" disabled onclick="showPayment()">✉ Proceed to Payment</button>
-      <div class="cart-required-note" id="cartRequiredNote">Add at least one item to your cart to checkout</div>
-      <div class="trust-badges"><div class="badge">🔒 Secure payment</div><div class="badge">Powered by Square</div></div>
-    </div>
-  </div>
-
-</div><!-- /right-col -->
-</main>
-</div><!-- /mainForm -->
-
-<footer>&copy; 2025 <strong>Columbine Copy &amp; Apparel</strong> · All files are kept confidential and deleted after printing</footer>
-
-<!-- LIGHTBOX -->
-<div class="lightbox" id="lightbox">
-  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-  <button class="lightbox-nav" id="lbPrev" onclick="lbNav(-1)">&#8249;</button>
-  <canvas id="lbCanvas"></canvas>
-  <button class="lightbox-nav" id="lbNext" onclick="lbNav(1)">&#8250;</button>
-  <div class="lightbox-info" id="lbInfo"></div>
-</div>
-
-<!-- SUCCESS MODAL -->
-<div class="modal-overlay" id="successModal">
-  <div class="modal">
-    <span class="modal-icon">🎉</span>
-    <h2>Order Placed!</h2>
-    <p>Thank you! We'll review your files and confirm details and pickup time.</p>
-    <div class="order-ref" id="orderRef">CCA-000000</div>
-    <p style="font-size:.8rem">A confirmation will be sent to your email.</p>
-    <button class="modal-close" onclick="closeModal()">Start New Order</button>
-  </div>
-</div>
-
-<script>
-// ════════════════════════════════════════════════════════════════
-const TAX_RATE = 0.0853; // 8.53% Montrose, CO sales tax
-const MINIMUM_ORDER = 3.00; // Minimum order amount
-
-const PRICING = {
-
-  // ── SMALL FORMAT ─────────────────────────────────────────────
-  // Price per page based on total pages printed (copies × pages)
-  // Edit the bw and color values to set your exact prices
-  small: {
-    tiers: [
-      { label: '1 page',        minPages:   1, maxPages:   1, bw: 0.39, color: 0.69 },
-      { label: '2–10 pages',    minPages:   2, maxPages:  10, bw: 0.23, color: 0.53 },
-      { label: '11–99 pages',   minPages:  11, maxPages:  99, bw: 0.15, color: 0.45 },
-      { label: '100–199 pages', minPages: 100, maxPages: 199, bw: 0.12, color: 0.39 },
-      { label: '200+ pages',    minPages: 200, maxPages: Infinity, bw: 0.12, color: 0.39 },
-    ],
-    // Double-sided multiplier (1.5 = 50% more than single-sided)
-    doubleSidedMultiplier: 1.5,
-    // Paper weight flat upcharge per page
-    paperWeight: {
-      '20lb': 0.00, '28lb': 0.09, 'cardstock': 0.20,
-    },
-    // Paper size flat upcharge per page
-    paperSize: {
-      'letter': 0.00, 'legal': 0.08, 'a4': 0.00, 'tabloid': 0.10,
-    },
-    // Finishing flat fees per document
-    binding: { comb: 3.00, spiral: 4.00, staple: 0.50 },
-    lamination: 1.85, // flat price per page
-    holePunch: 3.00,
-  },
-
-  // ── LARGE FORMAT ─────────────────────────────────────────────
-  // Price per SHEET based on total sheets printed (copies × pages)
-  // Each size has its own price — edit bw and color for each size
-  large: {
-    // Volume tiers — which tier applies is based on total sheet count
-    tiers: [
-      { label: '1 sheet',        minPages:   1, maxPages:   1 },
-      { label: '2–10 sheets',    minPages:   2, maxPages:  10 },
-      { label: '11–99 sheets',   minPages:  11, maxPages:  99 },
-      { label: '100–199 sheets', minPages: 100, maxPages: 199 },
-      { label: '200+ sheets',    minPages: 200, maxPages: Infinity },
-    ],
-    // Price per sheet for each size and tier
-    // Format: sizeName: [ tier1price, tier2price, tier3price, tier4price, tier5price ]
-    // Tiers match the order above: 1, 2-10, 11-99, 100-199, 200+
-    sizes: {
-      //               1 sheet   2-10    11-99   100-199   200+
-      'arch-a':  { bw: [2.00,   1.75,   1.50,   1.25,   1.00], color: [4.00,  3.50,  3.00,  2.75,  2.50] },
-      'arch-b':  { bw: [2.50,   2.25,   2.00,   1.75,   1.50], color: [5.00,  4.50,  4.00,  3.50,  3.00] },
-      'arch-c':  { bw: [2.21,   1.78,   0.99,   0.76,   0.76], color: [2.63,  2.20,  1.41,  1.18,  1.18] },
-      'arch-d':  { bw: [4.42,   3.56,   1.98,   1.52,   1.52], color: [4.84,  3.98,  2.40,  1.94,  1.94] },
-      'arch-e':  { bw: [8.04,   6.48,   3.88,   3.22,   3.22], color: [8.46,  6.90,  4.30,  3.64,  3.64] },
-      'arch-e1': { bw: [6.45,   5.20,   2.89,   2.48,   2.43], color: [6.90,  5.65,  3.34,  2.93,  2.88] },
-      'arch-e2': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
-      'arch-e3': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
-      'ansi-c':  { bw: [3.00,   2.75,   2.50,   2.25,   2.00], color: [6.00,  5.50,  5.00,  4.50,  4.00] },
-      'ansi-d':  { bw: [3.50,   3.25,   3.00,   2.75,   2.50], color: [7.00,  6.50,  6.00,  5.50,  5.00] },
-      'ansi-e':  { bw: [5.00,   4.75,   4.50,   4.25,   4.00], color: [9.00,  8.50,  8.00,  7.50,  7.00] },
-    },
-    // Media type flat upcharge per sheet
-    mediaType: {
-      'bond20': 0.00,
-      'bond36': 1.50,
-      'mylar':  5.00,
-      'vellum': 3.00,
-      'photo':  4.00,
-    },
-    // Lamination per sheet based on quantity tier
-    lamination: [
-      { maxPages:  1, price: 12.93 },  // 1 sheet
-      { maxPages: 10, price: 10.04 },  // 2–10 sheets
-      { maxPages: Infinity, price: 7.35 }, // 11+ sheets
-    ],
-  },
-};
-// ════════════════════════════════════════════════════════════════
-
-const SIZE_MAP = [
-  // Small format
-  { name:'Letter',  key:'letter',  w:612, h:792  },
-  { name:'Legal',   key:'legal',   w:612, h:1008 },
-  { name:'A4',      key:'a4',      w:595, h:842  },
-  { name:'Tabloid', key:'tabloid', w:792, h:1224 },
-  // Large format
-  { name:'Arch A',  key:'arch-a',  w:648,  h:864  },
-  { name:'Arch B',  key:'arch-b',  w:864,  h:1296 },
-  { name:'Arch C',  key:'arch-c',  w:1296, h:1728 },
-  { name:'Arch D',  key:'arch-d',  w:1728, h:2592 },
-  { name:'Arch E',  key:'arch-e',  w:2592, h:3456 },
-  { name:'Arch E1', key:'arch-e1', w:2160, h:3024 },
-  { name:'Arch E2', key:'arch-e2', w:1872, h:2736 },
-  { name:'Arch E3', key:'arch-e3', w:1944, h:2808 },
-  { name:'ANSI C',  key:'ansi-c',  w:1224, h:1584 },
-  { name:'ANSI D',  key:'ansi-d',  w:1584, h:2448 },
-  { name:'ANSI E',  key:'ansi-e',  w:2448, h:3168 },
-];
-const LARGE_KEYS = ['arch-a','arch-b','arch-c','arch-d','arch-e','arch-e1','arch-e2','arch-e3','ansi-c','ansi-d','ansi-e'];
-
-// ---- SIZE DETECTION ----
-function detectSize(widthPt, heightPt) {
-  const w = Math.min(widthPt, heightPt);
-  const h = Math.max(widthPt, heightPt);
-  let best = null, bestDist = Infinity;
-  for (const s of SIZE_MAP) {
-    const sw = Math.min(s.w, s.h), sh = Math.max(s.w, s.h);
-    const dist = Math.abs(w - sw) + Math.abs(h - sh);
-    if (dist < bestDist) { bestDist = dist; best = s; }
-  }
-  const tolerance = w * 0.03 * 2;
-  if (bestDist <= tolerance) return best;
-  if (bestDist <= w * 0.05 * 2) return best;
-  return null;
-}
-
-// ---- CART ----
-// Cart items stored as plain objects (no File objects — those can't be serialised)
-// File objects are tracked separately in currentFile
-let cart = [];
-let editingIndex = -1; // -1 = adding new, >=0 = editing existing item
-
-function loadCart() {
-  try { cart = JSON.parse(localStorage.getItem('cca_cart') || '[]'); } catch(e) { cart = []; }
-}
-function saveCart() {
-  localStorage.setItem('cca_cart', JSON.stringify(cart));
-}
-function scrollToCart() {
-  document.getElementById('cartPanel').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-// ---- FORMAT SELECTION ----
-let currentFormat = null;
-function selectFormat(fmt) {
-  // Reset binding dropdowns when switching formats
-  const smallBind = document.getElementById('bindingSelect');
-  if (smallBind) smallBind.value = '';
-  const largeBind = document.getElementById('largeBindingSelect');
-  if (largeBind) largeBind.value = '';
-  currentFormat = fmt;
-  document.getElementById('card-small').classList.toggle('selected', fmt==='small');
-  document.getElementById('card-large').classList.toggle('selected', fmt==='large');
-  document.getElementById('mainForm').style.display = '';
-  document.getElementById('small-options').style.display = fmt==='small' ? '' : 'none';
-  document.getElementById('large-options').style.display = fmt==='large' ? '' : 'none';
-  document.getElementById('addToCartArea').style.display = '';
-  document.getElementById('mainForm').scrollIntoView({behavior:'smooth',block:'start'});
-  updateAddToCartBtn();
-}
-
-// ---- CURRENT FILE (in-memory, single file) ----
-let currentFile = null; // { file, name, size, pageCount, pdfDoc, detectedSize, thumbCanvas }
-
-const uploadZone = document.getElementById('uploadZone');
-const fileInput  = document.getElementById('fileInput');
-
-uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e=>{ e.preventDefault(); uploadZone.classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f&&f.type==='application/pdf') loadSingleFile(f); });
-fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) loadSingleFile(fileInput.files[0]); fileInput.value=''; });
-
-function loadSingleFile(file) {
-  currentFile = { file, name:file.name, size:file.size, pageCount:null, pdfDoc:null, detectedSize:null };
-  // Track file objects so we can read them at checkout
-  if (!window.uploadedFiles) window.uploadedFiles = [];
-  window.uploadedFiles = window.uploadedFiles.filter(f => f.name !== file.name);
-  window.uploadedFiles.push({ name: file.name, file: file });
-  renderCurrentFile();
-  updateAddToCartBtn();
-  processPDF(currentFile);
-}
-
-async function processPDF(entry) {
-  try {
-    const ab = await entry.file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data:ab}).promise;
-    entry.pdfDoc = pdf;
-    entry.pageCount = pdf.numPages;
-    const page = await pdf.getPage(1);
-    const vp = page.getViewport({scale:1});
-    console.log('[PDF] '+entry.name+' '+vp.width.toFixed(1)+'×'+vp.height.toFixed(1)+'pt');
-    const det = detectSize(vp.width, vp.height);
-    entry.detectedSize = det;
-    if (det) {
-      if (LARGE_KEYS.includes(det.key) && currentFormat==='large') document.getElementById('largePaperSize').value = det.key;
-      else if (!LARGE_KEYS.includes(det.key) && currentFormat==='small') document.getElementById('paperSize').value = det.key;
-    }
-    renderCurrentFile();
-    updateAddToCartBtn();
-    // Render thumbnail
-    const thumbVp = page.getViewport({scale:0.35});
-    const canvas = document.createElement('canvas');
-    canvas.width=thumbVp.width; canvas.height=thumbVp.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:thumbVp}).promise;
-    entry.thumbCanvas = canvas;
-    renderCurrentFile();
-  } catch(e) {
-    entry.pageCount = '?';
-    renderCurrentFile();
-  }
-}
-
-function renderCurrentFile() {
-  const area = document.getElementById('currentFileArea');
-  if (!currentFile) { area.innerHTML=''; return; }
-  const sizeMB = (currentFile.size/1024/1024).toFixed(2);
-  const pageLabel = currentFile.pageCount===null
-    ? '<span class="page-badge loading">⏳ Reading…</span>'
-    : '<span class="page-badge">📄 '+currentFile.pageCount+' page'+(currentFile.pageCount!==1?'s':'')+'</span>';
-  const sizeLabel = currentFile.detectedSize
-    ? '<span class="size-badge">📐 '+currentFile.detectedSize.name+'</span>' : '';
-  const hasPages = currentFile.pageCount && currentFile.pageCount!=='?';
-  area.innerHTML = '<div class="current-file">'
-    +'<div class="file-thumb-wrap" id="thumbWrap" onclick="togglePreview()" title="Preview">'
-    +(currentFile.thumbCanvas ? '' : '<span style="font-size:1.4rem">📄</span>')
-    +'</div>'
-    +'<div class="file-info">'
-    +'<div class="file-name" title="'+currentFile.name+'">'+currentFile.name+'</div>'
-    +'<div class="file-meta"><span class="file-size">'+sizeMB+' MB</span>'+pageLabel+sizeLabel
-    +(hasPages ? '<button class="preview-toggle" id="previewBtn" onclick="togglePreview()">▸ Preview</button>' : '')
-    +'</div></div>'
-    +'<button class="file-remove" onclick="removeCurrentFile()" title="Remove">✕</button>'
-    +'</div>'
-    +'<div class="pdf-preview-panel" id="previewPanel">'
-    +'<div class="preview-pages-grid" id="previewGrid"><div class="preview-load-more" onclick="loadPreviewPages(1,6)">Load preview…</div></div>'
-    +'</div>';
-  // Attach thumb
-  if (currentFile.thumbCanvas) {
-    const wrap = document.getElementById('thumbWrap');
-    if (wrap) { wrap.innerHTML=''; wrap.appendChild(currentFile.thumbCanvas.cloneNode(true)); }
-  }
-}
-
-function removeCurrentFile() {
-  currentFile = null;
-  renderCurrentFile();
-  updateAddToCartBtn();
-}
-
-// Preview
-function togglePreview() {
-  const panel = document.getElementById('previewPanel');
-  const btn = document.getElementById('previewBtn');
-  if (!panel) return;
-  const isOpen = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  if (btn) btn.textContent = isOpen ? '▸ Preview' : '▾ Hide';
-  if (!isOpen) loadPreviewPages(1,6);
-}
-
-async function loadPreviewPages(fromPage, count) {
-  if (!currentFile?.pdfDoc) return;
-  const grid = document.getElementById('previewGrid');
-  if (!grid) return;
-  const total = currentFile.pdfDoc.numPages;
-  const upTo = Math.min(fromPage+count-1, total);
-  for (let p=fromPage; p<=upTo; p++) {
-    if (document.getElementById('prev-pg-'+p)) continue;
-    const wrap = document.createElement('div');
-    wrap.className='preview-page-wrap'; wrap.id='prev-pg-'+p;
-    const canvas = document.createElement('canvas');
-    wrap.appendChild(canvas);
-    const lbl = document.createElement('div');
-    lbl.className='preview-page-num'; lbl.textContent='Page '+p;
-    wrap.appendChild(lbl);
-    wrap.addEventListener('click', ()=>openLightbox(p));
-    grid.insertBefore(wrap, grid.querySelector('.preview-load-more'));
-    try {
-      const page = await currentFile.pdfDoc.getPage(p);
-      const vp = page.getViewport({scale:.7});
-      canvas.width=vp.width; canvas.height=vp.height;
-      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-    } catch(e) {}
-  }
-  const lm = grid.querySelector('.preview-load-more');
-  if (lm) {
-    if (upTo>=total) lm.style.display='none';
-    else { const rem=total-upTo; lm.textContent='Load '+Math.min(rem,6)+' more ('+rem+' remaining)'; lm.onclick=()=>loadPreviewPages(upTo+1,6); }
-  }
-}
-
-// Lightbox
-let lbPage=1;
-async function openLightbox(page) {
-  lbPage=page;
-  document.getElementById('lightbox').classList.add('open');
-  await renderLightboxPage();
-}
-async function renderLightboxPage() {
-  if (!currentFile?.pdfDoc) return;
-  const total=currentFile.pdfDoc.numPages;
-  document.getElementById('lbInfo').textContent=currentFile.name+'  —  Page '+lbPage+' of '+total;
-  document.getElementById('lbPrev').style.opacity=lbPage<=1?'.3':'1';
-  document.getElementById('lbNext').style.opacity=lbPage>=total?'.3':'1';
-  try {
-    const page=await currentFile.pdfDoc.getPage(lbPage);
-    const maxW=Math.min(window.innerWidth*.88,900);
-    const scale=maxW/page.getViewport({scale:1}).width;
-    const vp=page.getViewport({scale});
-    const canvas=document.getElementById('lbCanvas');
-    canvas.width=vp.width; canvas.height=vp.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-  } catch(e) {}
-}
-async function lbNav(dir) {
-  if (!currentFile?.pdfDoc) return;
-  const np=lbPage+dir;
-  if (np<1||np>currentFile.pdfDoc.numPages) return;
-  lbPage=np; await renderLightboxPage();
-}
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
-document.getElementById('lightbox').addEventListener('click', e=>{ if(e.target===document.getElementById('lightbox')) closeLightbox(); });
-document.addEventListener('keydown', e=>{ if(!document.getElementById('lightbox').classList.contains('open')) return; if(e.key==='ArrowRight') lbNav(1); if(e.key==='ArrowLeft') lbNav(-1); if(e.key==='Escape') closeLightbox(); });
-
-// ---- MULTI-RANGE ----
-let rangeCounter=1;
-function addRange(listId) {
-  const list=document.getElementById(listId);
-  const summaryId=listId==='rangeList'?'rangeSummary':'lRangeSummary';
-  const count=list.querySelectorAll('.range-entry').length+1;
-  rangeCounter++;
-  const div=document.createElement('div');
-  div.className='range-entry'; div.dataset.id=rangeCounter;
-  div.innerHTML=`<span class="range-label">Range ${count}</span><input type="number" class="range-from" placeholder="From" min="1"><span class="range-sep">—</span><input type="number" class="range-to" placeholder="To" min="1"><button class="remove-range" onclick="removeRange('${listId}',this)">✕</button>`;
-  list.appendChild(div);
-  div.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ updateRangeSummary(listId,summaryId); updateAddToCartBtn(); }));
-  renumberRanges(listId);
-  updateRangeSummary(listId, summaryId);
-}
-function removeRange(listId, btn) {
-  const entry=btn.closest('.range-entry');
-  if (entry.classList.contains('first-range')) return;
-  entry.remove();
-  renumberRanges(listId);
-  const summaryId=listId==='rangeList'?'rangeSummary':'lRangeSummary';
-  updateRangeSummary(listId, summaryId);
-  updateAddToCartBtn();
-}
-function renumberRanges(listId) {
-  document.querySelectorAll('#'+listId+' .range-entry').forEach((e,i)=>{ const l=e.querySelector('.range-label'); if(l) l.textContent='Range '+(i+1); });
-}
-function parseRanges(listId, maxPage) {
-  const pages=new Set();
-  document.querySelectorAll('#'+listId+' .range-entry').forEach(entry=>{ const from=parseInt(entry.querySelector('.range-from').value)||0; const toVal=entry.querySelector('.range-to').value; const to=toVal?(parseInt(toVal)||0):(maxPage||9999); if(from<1)return; const end=maxPage?Math.min(to,maxPage):to; for(let p=from;p<=end&&p<=9999;p++) pages.add(p); });
-  return pages;
-}
-function getRangePageCount(listId, maxPage) { return parseRanges(listId, maxPage).size; }
-function updateRangeSummary(listId, summaryId) {
-  const entries=document.querySelectorAll('#'+listId+' .range-entry');
-  const parts=[];
-  entries.forEach(e=>{ const f=e.querySelector('.range-from').value,t=e.querySelector('.range-to').value; if(f) parts.push('pp.'+f+(t?'–'+t:'+')); });
-  const el=document.getElementById(summaryId);
-  if (!el) return;
-  if (parts.length===0) { el.innerHTML='e.g. 1–5, 9–11, 22–48'; return; }
-  const pages=parseRanges(listId, 99999);
-  el.innerHTML=parts.join(', ')+' &nbsp;·&nbsp; <strong>'+pages.size+' unique page'+(pages.size!==1?'s':'')+ '</strong>';
-}
-
-// ---- PAGE RANGE LISTENERS ----
-document.querySelectorAll('input[name="pageRange"]').forEach(r=>r.addEventListener('change',()=>{ document.getElementById('customRangeArea').style.display=(r.value==='custom'&&r.checked)?'block':'none'; updateAddToCartBtn(); }));
-document.querySelectorAll('input[name="lPageRange"]').forEach(r=>r.addEventListener('change',()=>{ document.getElementById('lCustomRangeArea').style.display=(r.value==='custom'&&r.checked)?'block':'none'; updateAddToCartBtn(); }));
-document.querySelectorAll('#rangeList input').forEach(i=>i.addEventListener('input',()=>{ updateRangeSummary('rangeList','rangeSummary'); updateAddToCartBtn(); }));
-document.querySelectorAll('#lRangeList input').forEach(i=>i.addEventListener('input',()=>{ updateRangeSummary('lRangeList','lRangeSummary'); updateAddToCartBtn(); }));
-
-// ---- COPIES ----
-document.getElementById('qtyMinus').addEventListener('click',()=>{ const el=document.getElementById('copies'); if(+el.value>1){el.value=+el.value-1;updateAddToCartBtn();} });
-document.getElementById('qtyPlus').addEventListener('click',()=>{ const el=document.getElementById('copies'); el.value=+el.value+1;updateAddToCartBtn(); });
-document.getElementById('copies').addEventListener('input',updateAddToCartBtn);
-document.getElementById('lqtyMinus').addEventListener('click',()=>{ const el=document.getElementById('largeCopies'); if(+el.value>1){el.value=+el.value-1;updateAddToCartBtn();} });
-document.getElementById('lqtyPlus').addEventListener('click',()=>{ const el=document.getElementById('largeCopies'); el.value=+el.value+1;updateAddToCartBtn(); });
-document.getElementById('largeCopies').addEventListener('input',updateAddToCartBtn);
-
-// ---- TOGGLES ----
-function toggleOption(id) {
-  const row=document.getElementById(id+'Toggle');
-  const cb=document.getElementById(id);
-  const opts=document.getElementById(id+'Options');
-  cb.checked=!cb.checked;
-  row.classList.toggle('checked',cb.checked);
-  if(opts) opts.style.display=cb.checked?'block':'none';
-  updateAddToCartBtn();
-}
-document.querySelectorAll('input,select').forEach(el=>el.addEventListener('change',updateAddToCartBtn));
-document.getElementById('firstName').addEventListener('input',updateCheckoutBtn);
-document.getElementById('lastName').addEventListener('input',updateCheckoutBtn);
-document.getElementById('email').addEventListener('input',updateCheckoutBtn);
-
-// ---- PRICING CALC ----
-function getTier(tiers, n) { for(const t of tiers){ if(n<=t.maxPages) return t; } return tiers[tiers.length-1]; }
-function tierLabel(tiers, n) {
-  const t=getTier(tiers,n); const idx=tiers.indexOf(t); const prev=tiers[idx-1];
-  if(idx===0) return '1 page rate';
-  if(t.maxPages===Infinity) return (prev.maxPages+1)+ '+ rate';
-  return (prev.maxPages+1)+'–'+t.maxPages+' rate';
-}
-
-function calcItemPrice(item) {
-  const fmt = item.format;
-  const pages = item.totalPages;
-  const copies = item.copies;
-  const totalPrinted = pages * copies;
-  let price = 0;
-  if (fmt==='small') {
-    const tier=getTier(PRICING.small.tiers, totalPrinted);
-    let base=(item.color==='color'?tier.color:tier.bw)+(PRICING.small.paperWeight[item.paperWeight]||0)+(PRICING.small.paperSize[item.paperSize]||0);
-    if(item.sides==='double') base*=PRICING.small.doubleSidedMultiplier;
-    price=base*totalPrinted;
-    if(item.binding) price+=(PRICING.small.binding[item.bindType]||PRICING.small.binding.comb);
-    if(item.lamination) price+=(PRICING.small.lamination)*pages*copies;
-    if(item.holePunch) price+=PRICING.small.holePunch;
-  } else {
-    // Find tier index based on total sheets
-    const largeTierIdx = PRICING.large.tiers.findIndex(t => totalPrinted <= t.maxPages);
-    const ti = largeTierIdx >= 0 ? largeTierIdx : PRICING.large.tiers.length - 1;
-    // Look up exact price per sheet for this size and tier
-    const sizePrices = PRICING.large.sizes[item.paperSize] || PRICING.large.sizes['arch-d'];
-    const pricePerSheet = item.color === 'color' ? sizePrices.color[ti] : sizePrices.bw[ti];
-    const mediaUp = (PRICING.large.mediaType[item.mediaType] || 0);
-    price = (pricePerSheet + mediaUp) * totalPrinted;
-    if(item.lamination){
-    const lamTier = PRICING.large.lamination.find(t => totalPrinted <= t.maxPages) || PRICING.large.lamination.at(-1);
-    price += lamTier.price * totalPrinted;
-  }
-  }
-  return price;
-}
-
-function getCurrentSettings() {
-  const fmt = currentFormat;
-  const pg = currentFile?.pageCount && currentFile.pageCount!=='?' ? currentFile.pageCount : (fmt==='large'?1:10);
-  let totalPages, rangeStr;
-  if (fmt==='small') {
-    const rangeType=document.querySelector('input[name="pageRange"]:checked')?.value;
-    if(rangeType==='custom'){ totalPages=getRangePageCount('rangeList',pg); const parts=[]; document.querySelectorAll('#rangeList .range-entry').forEach(e=>{const f=e.querySelector('.range-from').value,t=e.querySelector('.range-to').value;if(f)parts.push(f+(t?'–'+t:'+'));}); rangeStr=parts.length?parts.join(', '):'Custom'; }
-    else { totalPages=pg; rangeStr='All pages'; }
-    return {
-      format:'small', fileName:currentFile?.name||'—', totalPages, rangeStr, copies:Math.max(1,+document.getElementById('copies').value||1),
-      color:document.querySelector('input[name="color"]:checked')?.value||'bw',
-      sides:document.querySelector('input[name="sides"]:checked')?.value||'single',
-      paperSize:document.getElementById('paperSize').value,
-      paperWeight:document.getElementById('smallPaperWeight').value,
-      binding: document.getElementById('bindingSelect').value !== '' && document.getElementById('bindingSelect').value !== 'none',
-      bindType: document.getElementById('bindingSelect').value !== 'none' ? document.getElementById('bindingSelect').value : '',
-      lamination:document.getElementById('lamination').checked,
-      
-      holePunch:document.getElementById('hole').checked,
-      notes:document.getElementById('fileNotes').value,
-    };
-  } else {
-    const rangeType=document.querySelector('input[name="lPageRange"]:checked')?.value;
-    if(rangeType==='custom'){ totalPages=getRangePageCount('lRangeList',pg); const parts=[]; document.querySelectorAll('#lRangeList .range-entry').forEach(e=>{const f=e.querySelector('.range-from').value,t=e.querySelector('.range-to').value;if(f)parts.push(f+(t?'–'+t:'+'));}); rangeStr=parts.length?parts.join(', '):'Custom'; }
-    else { totalPages=pg; rangeStr='All pages'; }
-    return {
-      format:'large', fileName:currentFile?.name||'—', totalPages, rangeStr, copies:Math.max(1,+document.getElementById('largeCopies').value||1),
-      color:document.querySelector('input[name="largeColor"]:checked')?.value||'bw',
-      paperSize:document.getElementById('largePaperSize').value,
-      mediaType:document.getElementById('largePaperType').value,
-      binding: document.getElementById('largeBindingSelect').value === 'yes',
-      lamination:document.getElementById('largeLamination').checked,
-      notes:document.getElementById('lFileNotes').value,
-    };
-  }
-}
-
-function updateAddToCartBtn() {
-  const hasFile = !!currentFile;
-  const btn = document.getElementById('addToCartBtn');
-  if (!btn) return;
-  btn.disabled = !hasFile || !currentFormat;
-  // Update tier notice
-  if (currentFormat==='small' && hasFile) {
-    const s=getCurrentSettings(); const total=s.totalPages*s.copies; const tier=getTier(PRICING.small.tiers,total); const price=calcItemPrice(s);
-    document.getElementById('tierNotice').innerHTML='<strong>'+tierLabel(PRICING.small.tiers,total)+'</strong> · Est. $'+price.toFixed(2);
-  } else if (currentFormat==='large' && hasFile) {
-    const s=getCurrentSettings(); const total=s.totalPages*s.copies; const tier=getTier(PRICING.large.tiers,total); const price=calcItemPrice(s);
-    document.getElementById('largeTierNotice').innerHTML='<strong>'+tierLabel(PRICING.large.tiers,total)+'</strong> · Est. $'+price.toFixed(2);
-  }
-  if (editingIndex>=0) btn.textContent='💾 Save Changes'; else btn.textContent='🛒 Add to Cart';
-}
-
-// ---- CART OPERATIONS ----
-function addToCart() {
-  if (!currentFile || !currentFormat) return;
-  // Require binding selection for both formats
-  if (currentFormat === 'small') {
-    if (!document.getElementById('bindingSelect').value) {
-      alert('Please select a binding option before adding to cart.');
-      document.getElementById('bindingSelect').focus();
-      return;
-    }
-  }
-  if (currentFormat === 'large') {
-    if (!document.getElementById('largeBindingSelect').value) {
-      alert('Please select a binding option before adding to cart.');
-      document.getElementById('largeBindingSelect').focus();
-      return;
-    }
-  }
-  // When editing, preserve the original file object if no new file was uploaded
-  if (editingIndex >= 0 && !currentFile.file && cart[editingIndex]) {
-    currentFile.file = (window.uploadedFiles||[]).find(f=>f.name===cart[editingIndex].fileName)?.file || null;
-    currentFile.pageCount = currentFile.pageCount || cart[editingIndex].totalPages;
-  }
-  const settings = getCurrentSettings();
-  settings.price = calcItemPrice(settings);
-  if (editingIndex >= 0) {
-    cart[editingIndex] = settings;
-    editingIndex = -1;
-    document.getElementById('editNotice').style.display='none';
-    document.getElementById('cancelEditBtn').style.display='none';
-  } else {
-    cart.push(settings);
-  }
-  saveCart();
-  renderCart();
-  resetForm();
-  // Scroll to cart
-  setTimeout(()=>document.getElementById('cartPanel').scrollIntoView({behavior:'smooth',block:'nearest'}), 200);
-}
-
-function editCartItem(idx) {
-  const item = cart[idx];
-  if (!item) return;
-  editingIndex = idx;
-
-  // Restore format
-  selectFormat(item.format);
-
-  if (item.format === 'small') {
-    document.getElementById('paperSize').value = item.paperSize;
-    document.getElementById('smallPaperWeight').value = item.paperWeight;
-    document.getElementById('copies').value = item.copies;
-    // color
-    const colorBtn = document.querySelector('input[name="color"][value="'+item.color+'"]');
-    if (colorBtn) colorBtn.checked = true;
-    // sides
-    const sidesBtn = document.querySelector('input[name="sides"][value="'+item.sides+'"]');
-    if (sidesBtn) sidesBtn.checked = true;
-    // binding — restore dropdown
-    document.getElementById('bindingSelect').value = item.binding ? (item.bindType || 'none') : 'none';
-    // lamination — simple yes/no now
-    document.getElementById('lamination').checked = item.lamination;
-    document.getElementById('laminationToggle').classList.toggle('checked', item.lamination);
-    // hole punch
-    document.getElementById('hole').checked = item.holePunch;
-    document.getElementById('holeToggle').classList.toggle('checked', item.holePunch);
-    // notes
-    document.getElementById('fileNotes').value = item.notes || '';
-    // page ranges
-    if (item.ranges) restoreRanges('smallRangeList', item.ranges, item.allPages);
-  } else {
-    document.getElementById('largePaperSize').value = item.paperSize;
-    document.getElementById('largePaperType').value = item.mediaType;
-    document.getElementById('largeCopies').value = item.copies;
-    // color
-    const lColorBtn = document.querySelector('input[name="largeColor"][value="'+item.color+'"]');
-    if (lColorBtn) lColorBtn.checked = true;
-    // binding — restore dropdown
-    document.getElementById('largeBindingSelect').value = item.binding ? 'yes' : 'no';
-    // lamination
-    document.getElementById('largeLamination').checked = item.lamination;
-    document.getElementById('largeLaminationToggle').classList.toggle('checked', item.lamination);
-    // notes
-    document.getElementById('lFileNotes').value = item.notes || '';
-    // page ranges
-    if (item.ranges) restoreRanges('largeRangeList', item.ranges, item.allPages);
-  }
-
-  // Keep the existing file — no need to re-upload just to change options
-  currentFile = { file: null, name: item.fileName, size: 0, pageCount: item.totalPages, pdfDoc: null, detectedSize: item.paperSize };
-  const area = document.getElementById('currentFileArea');
-  area.innerHTML = '<div style="margin-top:.6rem;padding:.6rem .9rem;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;font-size:.8rem;color:#2e7d32">✅ Editing: <strong>'+item.fileName+'</strong> — change options below and click Save</div>';
-  document.getElementById('uploadTitle').textContent = 'Editing: ' + item.fileName;
-
-  document.getElementById('editNotice').style.display = 'block';
-  document.getElementById('cancelEditBtn').style.display = 'inline';
-  document.getElementById('addToCartBtn').textContent = '💾 Save Changes';
-  updateAddToCartBtn();
-  document.getElementById('mainForm').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function cancelEdit() {
-  editingIndex=-1;
-  document.getElementById('editNotice').style.display='none';
-  document.getElementById('cancelEditBtn').style.display='none';
-  document.getElementById('addToCartBtn').textContent='🛒 Add to Cart';
-  document.getElementById('uploadTitle').textContent='Upload Your PDF';
-  resetForm();
-}
-
-function removeCartItem(idx) {
-  cart.splice(idx,1);
-  saveCart();
-  renderCart();
-  if(editingIndex===idx) cancelEdit();
-}
-
-function renderCart() {
-  const area=document.getElementById('cartItemsArea');
-  const emptyEl=document.getElementById('cartEmpty');
-  const totalRow=document.getElementById('cartTotalRow');
-  const countEl=document.getElementById('cartItemCount');
-  document.getElementById('cartCount').textContent=cart.length;
-  if(cart.length===0) {
-    area.innerHTML='<div class="cart-empty" id="cartEmpty">No items yet — configure a file and add it to your cart.</div>';
-    totalRow.style.display='none';
-    updateCheckoutBtn();
-    return;
-  }
-  let total=0;
-  const fmtLabels={small:'Small Format',large:'Large Format'};
-  const paperSizeLabels={letter:'Letter',legal:'Legal',a4:'A4',tabloid:'Tabloid','arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D','arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3','ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E'};
-  const mediaLabels={bond20:'Std Bond',bond36:'HW Bond',mylar:'Mylar',vellum:'Vellum',photo:'Photo'};
-  area.innerHTML=cart.map((item,i)=>{
-    total+=item.price;
-    const details=item.format==='small'
-      ? [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(item.sides==='double'?'Double-sided':'Single'),(item.paperWeight),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?(item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1)+' binding'):''),(item.lamination?('Lamination'):''),(item.holePunch?'Hole punch':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean)
-      : [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(mediaLabels[item.mediaType]||item.mediaType),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?'Binding':''),(item.lamination?'Lamination':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean);
-    return `<div class="cart-item"><div class="cart-item-header"><div class="cart-item-num">${i+1}</div><div class="cart-item-name" title="${item.fileName}">${item.fileName}</div><div class="cart-item-price">$${item.price.toFixed(2)}</div></div><div class="cart-item-body">${details.join(' · ')}</div><div class="cart-item-actions"><button class="cart-action-btn" onclick="editCartItem(${i})">✏️ Edit</button><button class="cart-action-btn danger" onclick="removeCartItem(${i})">🗑 Remove</button></div></div>`;
-  }).join('');
-  countEl.textContent='('+cart.length+' item'+(cart.length!==1?'s':'')+')';
-  const tax = total * TAX_RATE;
-  const grandTotal = total + tax;
-  totalRow.style.display='';
-  document.getElementById('cartTotalPrice').textContent='$'+grandTotal.toFixed(2);
-  document.getElementById('checkoutTotalPrice').textContent='$'+grandTotal.toFixed(2);
-  // Update tax line if it exists
-  const taxEl = document.getElementById('cartTaxLine');
-  if (taxEl) taxEl.textContent = 'Tax (8.53%): $'+tax.toFixed(2);
-  const subtotalEl = document.getElementById('cartSubtotalLine');
-  if (subtotalEl) subtotalEl.textContent = 'Subtotal: $'+total.toFixed(2);
-  updateCheckoutBtn();
-}
-
-function updateCheckoutBtn() {
-  const hasItems=cart.length>0;
-  const hasEmail=document.getElementById('email').value.includes('@');
-  const hasName=document.getElementById('firstName').value.trim().length>0;
-  document.getElementById('checkoutBtn').disabled=!(hasItems&&hasEmail&&hasName);
-  document.getElementById('cartRequiredNote').style.display=hasItems?'none':'';
-}
-
-function resetForm() {
-  currentFile=null;
-  renderCurrentFile();
-  document.getElementById('uploadTitle').textContent='Upload Your PDF';
-  // Reset small
-  document.querySelector('input[name="color"][value="bw"]').checked=true;
-  document.querySelector('input[name="sides"][value="single"]').checked=true;
-  document.getElementById('paperSize').value='letter';
-  document.getElementById('smallPaperWeight').value='20lb';
-  document.getElementById('copies').value=1;
-  document.querySelector('input[name="pageRange"][value="all"]').checked=true;
-  document.getElementById('customRangeArea').style.display='none';
-  // Reset large
-  document.getElementById('largeCopies').value=1;
-  document.querySelector('input[name="lPageRange"][value="all"]').checked=true;
-  document.getElementById('lCustomRangeArea').style.display='none';
-  document.querySelector('input[name="largeBinding"][value="no"]').checked=true;
-  // Reset toggles
-  ['binding','lamination','hole','largeLamination'].forEach(id=>{
-    const cb=document.getElementById(id); if(!cb)return;
-    cb.checked=false;
-    const row=document.getElementById(id+'Toggle'); if(row)row.classList.remove('checked');
-    const opts=document.getElementById(id+'Options'); if(opts)opts.style.display='none';
+/**
+ * Columbine Copy & Apparel — Payment + Email Function
+ * PDF files are sent as base64 attachments directly via Resend
+ * No Cloudinary needed!
+ */
+
+const { Client, Environment, ApiError } = require('square');
+const { randomUUID } = require('crypto');
+const https = require('https');
+
+// ── HTTPS helper ──────────────────────────────────────────────────────────────
+function httpsRequest(options, body) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        try { resolve({ status: res.statusCode, body: JSON.parse(text) }); }
+        catch(e) { resolve({ status: res.statusCode, body: text }); }
+      });
+    });
+    req.on('error', reject);
+    if (body) req.write(typeof body === 'string' ? body : body);
+    req.end();
   });
-  // Reset notes
-  document.getElementById('fileNotes').value='';
-  document.getElementById('lFileNotes').value='';
-  // Reset range lists
-  ['rangeList','lRangeList'].forEach(listId=>{
-    const list=document.getElementById(listId); if(!list)return;
-    list.innerHTML=`<div class="range-entry first-range" data-id="0"><span class="range-label">Range 1</span><input type="number" class="range-from" placeholder="From" min="1"><span class="range-sep">—</span><input type="number" class="range-to" placeholder="To" min="1"><button class="remove-range" onclick="removeRange('${listId}',this)">✕</button></div>`;
-    list.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ updateRangeSummary(listId,listId==='rangeList'?'rangeSummary':'lRangeSummary'); updateAddToCartBtn(); }));
+}
+
+// ── Send email via Resend (with optional PDF attachments) ─────────────────────
+async function sendEmail(to, subject, html, attachments = []) {
+  const payload = JSON.stringify({
+    from: `Columbine Copy & Apparel <${process.env.OWNER_EMAIL}>`,
+    to: [to],
+    subject,
+    html,
+    attachments, // [{ filename, content (base64) }]
   });
-  document.getElementById('rangeSummary').innerHTML='e.g. 1–5, 9–11, 22–48';
-  document.getElementById('lRangeSummary').innerHTML='e.g. 1–5, 9–11, 22–48';
-  updateAddToCartBtn();
+
+  const result = await httpsRequest({
+    hostname: 'api.resend.com',
+    path: '/emails',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(payload),
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+  }, payload);
+
+  if (result.status !== 200 && result.status !== 201) {
+    console.error('Resend error:', JSON.stringify(result.body));
+  } else {
+    console.log('✅ Email sent to:', to);
+  }
+  return result;
 }
 
-// ---- SQUARE PAYMENT ----
-const SQUARE_APP_ID      = 'sandbox-sq0idb-3R9R_KnKqlUVgyQ5ZFuIpw';
-const SQUARE_LOCATION_ID = 'LESH67YP1ERSX';
-const BACKEND_URL        = '/.netlify/functions/create-payment';
-let squareCard=null;
+// ── Format cart item for email ────────────────────────────────────────────────
+function formatCartItem(item, index) {
+  const sizeLabels = {
+    letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
+    'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
+    'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
+    'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
+  };
+  const mediaLabels = {
+    bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
+    mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
+  };
+  const lines = [
+    `<b>File:</b> ${item.fileName}`,
+    `<b>Format:</b> ${item.format === 'large' ? 'Large Format' : 'Small Format'}`,
+    `<b>Size:</b> ${sizeLabels[item.paperSize] || item.paperSize}`,
+    item.format === 'small'
+      ? `<b>Paper:</b> ${item.paperWeight}`
+      : `<b>Media:</b> ${mediaLabels[item.mediaType] || item.mediaType}`,
+    `<b>Color:</b> ${item.color === 'color' ? 'Full Color' : 'Black & White'}`,
+    item.sides ? `<b>Sides:</b> ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'}` : '',
+    `<b>Pages:</b> ${item.rangeStr || 'All'} ${item.totalPages ? `(${item.totalPages} pages)` : ''}`,
+    `<b>Copies:</b> ${item.copies}`,
+    item.binding ? `<b>Binding:</b> ${item.bindType || 'Yes'}` : '',
+    item.lamination ? `<b>Lamination:</b> ${item.lamType || 'Yes'}` : '',
+    item.holePunch ? `<b>Hole Punch:</b> Yes` : '',
+    item.notes ? `<b>Notes:</b> ${item.notes}` : '',
+    `<b>Item Total:</b> $${Number(item.price || 0).toFixed(2)}`,
+  ].filter(Boolean);
 
-async function initSquare(){
-  if(!window.Square){
-    document.getElementById('payment-status').textContent='Square.js failed to load — please refresh and try again.';
-    return;
-  }
-  let payments;
-  try{
-    payments=window.Square.payments(SQUARE_APP_ID,SQUARE_LOCATION_ID);
-  }catch(e){
-    console.error('Square.payments() failed:',e);
-    document.getElementById('payment-status').textContent='Payment setup error: '+e.message+' (check App ID and Location ID)';
-    return;
-  }
-  try{
-    squareCard=await payments.card();
-    await squareCard.attach('#card-container');
-    document.getElementById('card-button').addEventListener('click',handlePayment);
-    document.getElementById('payment-status').textContent='';
-  }catch(e){
-    console.error('Square card init failed:',e);
-    document.getElementById('payment-status').textContent='Card form error: '+e.message;
-  }
+  return `
+    <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:14px 18px;margin-bottom:12px">
+      <div style="font-weight:700;color:#1a0a2e;margin-bottom:8px">Item ${index + 1}</div>
+      ${lines.map(l => `<div style="font-size:0.88rem;color:#333;margin-bottom:3px">${l}</div>`).join('')}
+    </div>`;
 }
 
-async function handlePayment(){
-  const btn=document.getElementById('card-button');
-  const status=document.getElementById('payment-status');
-  btn.disabled=true; btn.textContent='⏳ Processing…'; status.textContent='';
-  try{
-    const result=await squareCard.tokenize();
-    if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64
-    const pdfFiles = [];
-    for (const item of cart) {
-      const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
-      if (tracked && tracked.file) {
-        try {
-          const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          pdfFiles.push({name:tracked.name, data:b64});
-        } catch(e){ console.warn('Could not read:',item.fileName); }
+// ── Main handler ──────────────────────────────────────────────────────────────
+exports.handler = async function(event) {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  let body;
+  try { body = JSON.parse(event.body); }
+  catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) }; }
+
+  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles } = body;
+
+  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0);
+
+  if (!sourceId) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
+  }
+  if (!amountCents || isNaN(amountCents) || amountCents < 1) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid order amount.' }) };
+  }
+
+  const finalAmount = Math.max(Number(amountCents), 100);
+  const totalAmount = (finalAmount / 100).toFixed(2);
+  const subtotalAmount = (finalAmount / 100 / 1.0853).toFixed(2);
+  const taxAmount = ((finalAmount / 100) - (finalAmount / 100 / 1.0853)).toFixed(2);
+  const orderId = 'CCA-' + Math.floor(100000 + Math.random() * 900000);
+
+  // ── 1. Charge via Square ──────────────────────────────────────────────────
+  const squareClient = new Client({
+    accessToken: process.env.SQUARE_ACCESS_TOKEN,
+    environment: process.env.NODE_ENV === 'production'
+      ? Environment.Production : Environment.Sandbox,
+  });
+
+  let payment;
+  try {
+    const response = await squareClient.paymentsApi.createPayment({
+      sourceId,
+      idempotencyKey: randomUUID(),
+      amountMoney: { amount: BigInt(finalAmount), currency: currency || 'USD' },
+      locationId: process.env.SQUARE_LOCATION_ID,
+      referenceId: orderId,
+      note: `Columbine Print Order ${orderId} — ${customer?.name || 'Customer'}`,
+      buyerEmailAddress: customer?.email,
+    });
+    payment = response.result.payment;
+    console.log(`✅ Payment success — ${orderId} — $${totalAmount}`);
+  } catch(error) {
+    if (error instanceof ApiError) {
+      const msg = error.errors?.map(e => e.detail).join('; ') || 'Payment failed.';
+      console.error('Square error:', msg);
+      return { statusCode: 402, body: JSON.stringify({ success: false, error: msg }) };
+    }
+    console.error('Payment error:', error);
+    return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
+  }
+
+  // ── 2. Build PDF attachments for email ────────────────────────────────────
+  const attachments = [];
+  if (pdfFiles && pdfFiles.length > 0) {
+    for (const f of pdfFiles) {
+      try {
+        const clean = f.data.replace(/^data:[^;]+;base64,/, '');
+        attachments.push({ filename: f.name, content: clean });
+        console.log(`✅ Attached: ${f.name} (${Math.round(clean.length * 0.75 / 1024)}KB)`);
+      } catch(e) {
+        console.error(`Could not attach ${f.name}:`, e.message);
       }
     }
-    const total=cart.reduce((s,i)=>s+i.price,0);
-    if (!total || total <= 0) {
-      status.textContent = 'Cart total is $0 — please add items to your cart first.';
-      btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return;
-    }
-    if (total < MINIMUM_ORDER) {
-      status.textContent = `A minimum order of $${MINIMUM_ORDER.toFixed(2)} is required. Your current subtotal is $${total.toFixed(2)} — please add more items to your cart.`;
-      btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return;
-    }
-    const tax = total * TAX_RATE;
-    const chargeTotal = total + tax;
-    const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
-      customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
-      cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
-    })});
-    const data=await response.json();
-    if(data.success){ document.getElementById('orderRef').textContent=data.orderId||('CCA-'+Math.floor(100000+Math.random()*900000)); document.getElementById('successModal').classList.add('visible'); }
-    else{ status.textContent=data.error||'Payment failed.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
-  }catch(err){ status.textContent='Network error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
-}
+  }
 
-function showPayment(){
-  document.getElementById('checkoutBtn').style.display='none';
-  document.getElementById('paymentSection').style.display='block';
-  document.getElementById('card-button').disabled=false;
-  initSquare();
-}
+  const cartHtml = (cartItems || []).map((item, i) => formatCartItem(item, i)).join('');
 
-function closeModal(){
-  document.getElementById('successModal').classList.remove('visible');
-  cart=[]; saveCart(); renderCart();
-  document.getElementById('paymentSection').style.display='none';
-  document.getElementById('checkoutBtn').style.display='';
-  squareCard=null;
-  ['firstName','lastName','email','phone','orderNotes'].forEach(id=>document.getElementById(id).value='');
-  resetForm();
-}
+  // ── 3. Email owner with PDF attachments ───────────────────────────────────
+  await sendEmail(
+    process.env.OWNER_EMAIL,
+    `🖨 New Print Order ${orderId} — $${totalAmount} — ${customer?.name}`,
+    `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0">
+        <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">New Print Order</h1>
+        <p style="color:#9a8ab0;margin:6px 0 0">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid</p>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none">
+        <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 10px">Customer</h2>
+        <div style="background:#f4f0fb;border-radius:6px;padding:14px 18px;margin-bottom:20px;font-size:.88rem">
+          <div><b>Name:</b> ${customer?.name || '—'}</div>
+          <div><b>Email:</b> ${customer?.email || '—'}</div>
+          <div><b>Phone:</b> ${customer?.phone || '—'}</div>
+          ${orderNotes ? `<div><b>Notes:</b> ${orderNotes}</div>` : ''}
+        </div>
+        ${attachments.length > 0
+          ? `<p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
+              📎 ${attachments.length} PDF file${attachments.length > 1 ? 's' : ''} attached to this email
+             </p>`
+          : `<p style="background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:12px;color:#e65100;font-size:.88rem">
+              ⚠ No PDF files were attached — customer may need to resend
+             </p>`
+        }
+        <h2 style="color:#1a0a2e;font-size:1rem;margin:16px 0 10px">Order Details</h2>
+        ${cartHtml}
+        <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+          <div>
+            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:2px">Subtotal: $${subtotalAmount}</div>
+            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:6px">Tax (8.53%): $${taxAmount}</div>
+            <div style="color:#9a8ab0;font-size:.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</div>
+            <div style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</div>
+          </div>
+        </div>
+        <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
+      </div>
+    </div>`,
+    attachments
+  );
 
-// ---- INIT ----
-loadCart();
-renderCart();
-</script>
-</body>
-</html>
+  // ── 4. Email customer confirmation ────────────────────────────────────────
+  if (customer?.email) {
+    await sendEmail(
+      customer.email,
+      `Your print order is confirmed — ${orderId}`,
+      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0;text-align:center">
+          <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">Order Confirmed!</h1>
+          <p style="color:#9a8ab0;margin:6px 0 0">Columbine Copy & Apparel</p>
+        </div>
+        <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none;text-align:center">
+          <p style="color:#333">Hi ${customer.name?.split(' ')[0] || 'there'},</p>
+          <p style="color:#555;font-size:.9rem">Thank you for your order! We have received your payment and will begin processing your print job shortly.</p>
+          <div style="background:#f4f0fb;border-radius:6px;padding:16px;margin:20px 0;display:inline-block">
+            <div style="color:#6e5a8a;font-size:.78rem;text-transform:uppercase;letter-spacing:1px">Order Reference</div>
+            <div style="color:#1a0a2e;font-size:1.4rem;font-weight:700;font-family:monospace;letter-spacing:2px">${orderId}</div>
+          </div>
+          <p style="color:#333">Total paid: <b>$${totalAmount}</b></p>
+          <p style="color:#555;font-size:.88rem">We will contact you when your order is ready for pickup.</p>
+          <p style="color:#999;font-size:.78rem;margin-top:24px">Columbine Copy & Apparel · All files are kept confidential and deleted after printing</p>
+        </div>
+      </div>`
+    );
+  }
+
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ success: true, orderId, paymentId: payment.id }),
+  };
+};
