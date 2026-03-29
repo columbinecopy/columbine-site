@@ -384,18 +384,15 @@ footer strong{color:var(--gold)}
       </div>
       <div class="divider"></div>
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
-      <div class="toggle-row" id="bindingToggle" onclick="toggleOption('binding')">
-        <input type="checkbox" id="binding">
-        <div class="toggle-label"><span>📚</span><div><div style="font-weight:600;font-size:.88rem">Binding</div><div style="font-size:.73rem;color:var(--mid)">Choose type below</div></div></div>
-        <div class="toggle-pill"></div>
-      </div>
-      <div id="bindingOptions" style="margin-top:.5rem;display:none;padding-left:.5rem">
-        <div class="radio-cards" style="flex-wrap:wrap">
-          <div class="radio-card"><input type="radio" name="bindType" id="comb" value="comb" checked><label for="comb">🗂 Comb</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="spiral" value="spiral"><label for="spiral">🌀 Spiral</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="staple" value="staple"><label for="staple">📎 Staple</label></div>
-          
-        </div>
+      <div class="option-group">
+        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
+        <select id="bindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+          <option value="" disabled selected>— Select binding option —</option>
+          <option value="none">No binding</option>
+          <option value="comb">🗂 Comb binding ($3.00)</option>
+          <option value="spiral">🌀 Spiral / Coil ($4.00)</option>
+          <option value="staple">📎 Staple ($0.50)</option>
+        </select>
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="laminationToggle" onclick="toggleOption('lamination')">
@@ -490,12 +487,12 @@ footer strong{color:var(--gold)}
       <div class="divider"></div>
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
       <div class="option-group" style="margin-bottom:.75rem">
-        <label class="field-label">Binding</label>
-        <div class="yn-row">
-          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindYes" value="yes"><label for="lbindYes">✅ Yes</label></div>
-          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindNo" value="no"><label for="lbindNo">❌ No</label></div>
-        </div>
-        <div style="font-size:.73rem;color:var(--mid);margin-top:.3rem">No additional charge for binding</div>
+        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
+        <select id="largeBindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+          <option value="" disabled selected>— Select binding option —</option>
+          <option value="no">No binding</option>
+          <option value="yes">Yes — include binding (no extra charge)</option>
+        </select>
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="largeLaminationToggle" onclick="toggleOption('largeLamination')">
@@ -733,8 +730,11 @@ function scrollToCart() {
 // ---- FORMAT SELECTION ----
 let currentFormat = null;
 function selectFormat(fmt) {
-  // Reset binding selection when switching formats
-  document.querySelectorAll('input[name="largeBinding"]').forEach(r => r.checked = false);
+  // Reset binding dropdowns when switching formats
+  const smallBind = document.getElementById('bindingSelect');
+  if (smallBind) smallBind.value = '';
+  const largeBind = document.getElementById('largeBindingSelect');
+  if (largeBind) largeBind.value = '';
   currentFormat = fmt;
   document.getElementById('card-small').classList.toggle('selected', fmt==='small');
   document.getElementById('card-large').classList.toggle('selected', fmt==='large');
@@ -1037,8 +1037,8 @@ function getCurrentSettings() {
       sides:document.querySelector('input[name="sides"]:checked')?.value||'single',
       paperSize:document.getElementById('paperSize').value,
       paperWeight:document.getElementById('smallPaperWeight').value,
-      binding:document.getElementById('binding').checked,
-      bindType:document.querySelector('input[name="bindType"]:checked')?.value||'comb',
+      binding: document.getElementById('bindingSelect').value !== '' && document.getElementById('bindingSelect').value !== 'none',
+      bindType: document.getElementById('bindingSelect').value !== 'none' ? document.getElementById('bindingSelect').value : '',
       lamination:document.getElementById('lamination').checked,
       
       holePunch:document.getElementById('hole').checked,
@@ -1053,7 +1053,7 @@ function getCurrentSettings() {
       color:document.querySelector('input[name="largeColor"]:checked')?.value||'bw',
       paperSize:document.getElementById('largePaperSize').value,
       mediaType:document.getElementById('largePaperType').value,
-      binding:document.querySelector('input[name="largeBinding"]:checked')?.value==='yes',
+      binding: document.getElementById('largeBindingSelect').value === 'yes',
       lamination:document.getElementById('largeLamination').checked,
       notes:document.getElementById('lFileNotes').value,
     };
@@ -1079,11 +1079,18 @@ function updateAddToCartBtn() {
 // ---- CART OPERATIONS ----
 function addToCart() {
   if (!currentFile || !currentFormat) return;
-  // Require binding selection for large format
+  // Require binding selection for both formats
+  if (currentFormat === 'small') {
+    if (!document.getElementById('bindingSelect').value) {
+      alert('Please select a binding option before adding to cart.');
+      document.getElementById('bindingSelect').focus();
+      return;
+    }
+  }
   if (currentFormat === 'large') {
-    const bindingSelected = document.querySelector('input[name="largeBinding"]:checked');
-    if (!bindingSelected) {
-      alert('Please select a binding option (Yes or No) before adding to cart.');
+    if (!document.getElementById('largeBindingSelect').value) {
+      alert('Please select a binding option before adding to cart.');
+      document.getElementById('largeBindingSelect').focus();
       return;
     }
   }
@@ -1127,14 +1134,8 @@ function editCartItem(idx) {
     // sides
     const sidesBtn = document.querySelector('input[name="sides"][value="'+item.sides+'"]');
     if (sidesBtn) sidesBtn.checked = true;
-    // binding
-    document.getElementById('binding').checked = item.binding;
-    document.getElementById('bindingToggle').classList.toggle('checked', item.binding);
-    document.getElementById('bindingOptions').style.display = item.binding ? 'block' : 'none';
-    if (item.binding) {
-      const bindBtn = document.querySelector('input[name="bindType"][value="'+item.bindType+'"]');
-      if (bindBtn) bindBtn.checked = true;
-    }
+    // binding — restore dropdown
+    document.getElementById('bindingSelect').value = item.binding ? (item.bindType || 'none') : 'none';
     // lamination — simple yes/no now
     document.getElementById('lamination').checked = item.lamination;
     document.getElementById('laminationToggle').classList.toggle('checked', item.lamination);
@@ -1152,10 +1153,8 @@ function editCartItem(idx) {
     // color
     const lColorBtn = document.querySelector('input[name="largeColor"][value="'+item.color+'"]');
     if (lColorBtn) lColorBtn.checked = true;
-    // binding
-    const bindVal = item.binding ? 'yes' : 'no';
-    const lBindBtn = document.querySelector('input[name="largeBinding"][value="'+bindVal+'"]');
-    if (lBindBtn) lBindBtn.checked = true;
+    // binding — restore dropdown
+    document.getElementById('largeBindingSelect').value = item.binding ? 'yes' : 'no';
     // lamination
     document.getElementById('largeLamination').checked = item.lamination;
     document.getElementById('largeLaminationToggle').classList.toggle('checked', item.lamination);
