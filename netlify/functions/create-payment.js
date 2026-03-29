@@ -341,9 +341,8 @@ footer strong{color:var(--gold)}
           <label class="field-label">Paper Weight</label>
           <select id="smallPaperWeight">
             <option value="20lb">Standard (20lb)</option>
-            <option value="24lb">Premium (24lb)</option>
-            <option value="32lb">Heavy (32lb)</option>
-            <option value="card">Cardstock (80lb)</option>
+            <option value="28lb">Premium (28lb)</option>
+            <option value="cardstock">Cardstock</option>
           </select>
         </div>
         <div class="option-group">
@@ -395,21 +394,16 @@ footer strong{color:var(--gold)}
           <div class="radio-card"><input type="radio" name="bindType" id="comb" value="comb" checked><label for="comb">🗂 Comb</label></div>
           <div class="radio-card"><input type="radio" name="bindType" id="spiral" value="spiral"><label for="spiral">🌀 Spiral</label></div>
           <div class="radio-card"><input type="radio" name="bindType" id="staple" value="staple"><label for="staple">📎 Staple</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="perfect" value="perfect"><label for="perfect">📖 Perfect</label></div>
+          
         </div>
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="laminationToggle" onclick="toggleOption('lamination')">
           <input type="checkbox" id="lamination">
-          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Glossy or matte</div></div></div>
+          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Protective finish</div></div></div>
           <div class="toggle-pill"></div>
         </div>
-        <div id="laminationOptions" style="margin-top:.5rem;display:none;padding-left:.5rem">
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="lamType" id="glossy" value="glossy" checked><label for="glossy">💎 Glossy</label></div>
-            <div class="radio-card"><input type="radio" name="lamType" id="matte" value="matte"><label for="matte">🌫 Matte</label></div>
-          </div>
-        </div>
+        
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="holeToggle" onclick="toggleOption('hole')">
@@ -499,7 +493,7 @@ footer strong{color:var(--gold)}
         <label class="field-label">Binding</label>
         <div class="yn-row">
           <div class="yn-card"><input type="radio" name="largeBinding" id="lbindYes" value="yes"><label for="lbindYes">✅ Yes</label></div>
-          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindNo" value="no" checked><label for="lbindNo">❌ No</label></div>
+          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindNo" value="no"><label for="lbindNo">❌ No</label></div>
         </div>
         <div style="font-size:.73rem;color:var(--mid);margin-top:.3rem">No additional charge for binding</div>
       </div>
@@ -614,13 +608,13 @@ const PRICING = {
   // Edit the bw and color values to set your exact prices
   small: {
     tiers: [
-      { label: '1 page',       minPages:   1, maxPages:   1, bw: 0.39, color: 0.69 },
-      { label: '2–10 pages',   minPages:   2, maxPages:  10, bw: 0.23, color: 0.53 },
-      { label: '11–99 pages',  minPages:  11, maxPages:  99, bw: 0.15, color: 0.45 },
-      { label: '100–199 pages',minPages: 100, maxPages: 199, bw: 0.12, color: 0.39 },
-      { label: '200+ pages',   minPages: 200, maxPages: Infinity, bw: 0.12, color: 0.39 },
+      { label: '1 page',        minPages:   1, maxPages:   1, bw: 0.39, color: 0.69 },
+      { label: '2–10 pages',    minPages:   2, maxPages:  10, bw: 0.23, color: 0.53 },
+      { label: '11–99 pages',   minPages:  11, maxPages:  99, bw: 0.15, color: 0.45 },
+      { label: '100–199 pages', minPages: 100, maxPages: 199, bw: 0.12, color: 0.39 },
+      { label: '200+ pages',    minPages: 200, maxPages: Infinity, bw: 0.12, color: 0.39 },
     ],
-    // Double-sided: 1.0 = same price as single-sided
+    // Double-sided multiplier (1.5 = 50% more than single-sided)
     doubleSidedMultiplier: 1.5,
     // Paper weight flat upcharge per page
     paperWeight: {
@@ -628,11 +622,11 @@ const PRICING = {
     },
     // Paper size flat upcharge per page
     paperSize: {
-      'letter':0.00, 'legal':0.08, 'a4':0.00, 'tabloid':0.10,
+      'letter': 0.00, 'legal': 0.08, 'a4': 0.00, 'tabloid': 0.10,
     },
     // Finishing flat fees per document
-    binding:  { comb:3.00, spiral:4.00, staple:0.50 },
-    lamination: { 1.85 },
+    binding: { comb: 3.00, spiral: 4.00, staple: 0.50 },
+    lamination: 1.85, // flat price per page
     holePunch: 3.00,
   },
 
@@ -640,34 +634,31 @@ const PRICING = {
   // Price per SHEET based on total sheets printed (copies × pages)
   // Each size has its own price — edit bw and color for each size
   large: {
-
     // Volume tiers — which tier applies is based on total sheet count
     tiers: [
-      { label: '1 sheet',       minPages:   1, maxPages:   1 },
-      { label: '2–10 sheets',   minPages:   2, maxPages:  10 },
-      { label: '11–99 sheets',  minPages:  11, maxPages:  99 },
-      { label: '100–199 sheets',minPages: 100, maxPages: 199 },
-      { label: '200+ sheets',   minPages: 200, maxPages: Infinity },
+      { label: '1 sheet',        minPages:   1, maxPages:   1 },
+      { label: '2–10 sheets',    minPages:   2, maxPages:  10 },
+      { label: '11–99 sheets',   minPages:  11, maxPages:  99 },
+      { label: '100–199 sheets', minPages: 100, maxPages: 199 },
+      { label: '200+ sheets',    minPages: 200, maxPages: Infinity },
     ],
-
     // Price per sheet for each size and tier
     // Format: sizeName: [ tier1price, tier2price, tier3price, tier4price, tier5price ]
     // Tiers match the order above: 1, 2-10, 11-99, 100-199, 200+
     sizes: {
-      //               1 sheet  2-10   11-99  100-199  200+
-      'arch-a':  { bw: [2.00,  1.75,  1.50,  1.25,  1.00], color: [4.00, 3.50, 3.00, 2.75, 2.50] },
-      'arch-b':  { bw: [2.50,  2.25,  2.00,  1.75,  1.50], color: [5.00, 4.50, 4.00, 3.50, 3.00] },
-      'arch-c':  { bw: [2.21,  1.78,  0.99,  0.76,  0.76], color: [2.63, 2.20, 1.41, 1.18, 1.18] },
-      'arch-d':  { bw: [4.42,  3.56,  1.98,  1.52,  1.52], color: [4.84, 3.98, 2.40, 1.94, 1.94] },
-      'arch-e':  { bw: [8.04,  6.48,  3.88,  3.22,  3.22], color: [8.46, 6.90, 4.30, 3.64, 3.64] },
-      'arch-e1': { bw: [6.45,  5.20,  2.89,  2.48,  2.43], color: [6.90, 5.65, 3.34, 2.93, 2.88] },
-      'arch-e2': { bw: [4.00,  3.75,  3.50,  3.25,  3.00], color: [7.50, 7.00, 6.50, 6.00, 5.50] },
-      'arch-e3': { bw: [4.00,  3.75,  3.50,  3.25,  3.00], color: [7.50, 7.00, 6.50, 6.00, 5.50] },
-      'ansi-c':  { bw: [3.00,  2.75,  2.50,  2.25,  2.00], color: [6.00, 5.50, 5.00, 4.50, 4.00] },
-      'ansi-d':  { bw: [3.50,  3.25,  3.00,  2.75,  2.50], color: [7.00, 6.50, 6.00, 5.50, 5.00] },
-      'ansi-e':  { bw: [5.00,  4.75,  4.50,  4.25,  4.00], color: [9.00, 8.50, 8.00, 7.50, 7.00] },
+      //               1 sheet   2-10    11-99   100-199   200+
+      'arch-a':  { bw: [2.00,   1.75,   1.50,   1.25,   1.00], color: [4.00,  3.50,  3.00,  2.75,  2.50] },
+      'arch-b':  { bw: [2.50,   2.25,   2.00,   1.75,   1.50], color: [5.00,  4.50,  4.00,  3.50,  3.00] },
+      'arch-c':  { bw: [2.21,   1.78,   0.99,   0.76,   0.76], color: [2.63,  2.20,  1.41,  1.18,  1.18] },
+      'arch-d':  { bw: [4.42,   3.56,   1.98,   1.52,   1.52], color: [4.84,  3.98,  2.40,  1.94,  1.94] },
+      'arch-e':  { bw: [8.04,   6.48,   3.88,   3.22,   3.22], color: [8.46,  6.90,  4.30,  3.64,  3.64] },
+      'arch-e1': { bw: [6.45,   5.20,   2.89,   2.48,   2.43], color: [6.90,  5.65,  3.34,  2.93,  2.88] },
+      'arch-e2': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
+      'arch-e3': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
+      'ansi-c':  { bw: [3.00,   2.75,   2.50,   2.25,   2.00], color: [6.00,  5.50,  5.00,  4.50,  4.00] },
+      'ansi-d':  { bw: [3.50,   3.25,   3.00,   2.75,   2.50], color: [7.00,  6.50,  6.00,  5.50,  5.00] },
+      'ansi-e':  { bw: [5.00,   4.75,   4.50,   4.25,   4.00], color: [9.00,  8.50,  8.00,  7.50,  7.00] },
     },
-
     // Media type flat upcharge per sheet
     mediaType: {
       'bond20': 0.00,
@@ -676,9 +667,12 @@ const PRICING = {
       'vellum': 3.00,
       'photo':  4.00,
     },
-
-    // Lamination per sq ft
-    lamination: 2.50,
+    // Lamination per sheet based on quantity tier
+    lamination: [
+      { maxPages:  1, price: 12.93 },  // 1 sheet
+      { maxPages: 10, price: 10.04 },  // 2–10 sheets
+      { maxPages: Infinity, price: 7.35 }, // 11+ sheets
+    ],
   },
 };
 // ════════════════════════════════════════════════════════════════
@@ -739,6 +733,8 @@ function scrollToCart() {
 // ---- FORMAT SELECTION ----
 let currentFormat = null;
 function selectFormat(fmt) {
+  // Reset binding selection when switching formats
+  document.querySelectorAll('input[name="largeBinding"]').forEach(r => r.checked = false);
   currentFormat = fmt;
   document.getElementById('card-small').classList.toggle('selected', fmt==='small');
   document.getElementById('card-large').classList.toggle('selected', fmt==='large');
@@ -1008,7 +1004,7 @@ function calcItemPrice(item) {
     if(item.sides==='double') base*=PRICING.small.doubleSidedMultiplier;
     price=base*totalPrinted;
     if(item.binding) price+=(PRICING.small.binding[item.bindType]||PRICING.small.binding.comb);
-    if(item.lamination) price+=(PRICING.small.lamination[item.lamType]||PRICING.small.lamination.glossy)*pages*copies;
+    if(item.lamination) price+=(PRICING.small.lamination)*pages*copies;
     if(item.holePunch) price+=PRICING.small.holePunch;
   } else {
     // Find tier index based on total sheets
@@ -1019,7 +1015,10 @@ function calcItemPrice(item) {
     const pricePerSheet = item.color === 'color' ? sizePrices.color[ti] : sizePrices.bw[ti];
     const mediaUp = (PRICING.large.mediaType[item.mediaType] || 0);
     price = (pricePerSheet + mediaUp) * totalPrinted;
-    if(item.lamination) price += PRICING.large.lamination * totalPrinted * 2;
+    if(item.lamination){
+    const lamTier = PRICING.large.lamination.find(t => totalPrinted <= t.maxPages) || PRICING.large.lamination.at(-1);
+    price += lamTier.price * totalPrinted;
+  }
   }
   return price;
 }
@@ -1041,7 +1040,7 @@ function getCurrentSettings() {
       binding:document.getElementById('binding').checked,
       bindType:document.querySelector('input[name="bindType"]:checked')?.value||'comb',
       lamination:document.getElementById('lamination').checked,
-      lamType:document.querySelector('input[name="lamType"]:checked')?.value||'glossy',
+      
       holePunch:document.getElementById('hole').checked,
       notes:document.getElementById('fileNotes').value,
     };
@@ -1080,6 +1079,14 @@ function updateAddToCartBtn() {
 // ---- CART OPERATIONS ----
 function addToCart() {
   if (!currentFile || !currentFormat) return;
+  // Require binding selection for large format
+  if (currentFormat === 'large') {
+    const bindingSelected = document.querySelector('input[name="largeBinding"]:checked');
+    if (!bindingSelected) {
+      alert('Please select a binding option (Yes or No) before adding to cart.');
+      return;
+    }
+  }
   const settings = getCurrentSettings();
   settings.price = calcItemPrice(settings);
   if (editingIndex >= 0) {
@@ -1119,7 +1126,7 @@ function editCartItem(idx) {
     document.getElementById('lamination').checked=item.lamination;
     document.getElementById('laminationToggle').classList.toggle('checked',item.lamination);
     document.getElementById('laminationOptions').style.display=item.lamination?'block':'none';
-    if(item.lamination) document.querySelector('input[name="lamType"][value="'+item.lamType+'"]').checked=true;
+    if(item.lamination) 
     // hole
     document.getElementById('hole').checked=item.holePunch;
     document.getElementById('holeToggle').classList.toggle('checked',item.holePunch);
@@ -1181,7 +1188,7 @@ function renderCart() {
   area.innerHTML=cart.map((item,i)=>{
     total+=item.price;
     const details=item.format==='small'
-      ? [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(item.sides==='double'?'Double-sided':'Single'),(item.paperWeight),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?(item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1)+' binding'):''),(item.lamination?(item.lamType+' lam'):''),(item.holePunch?'Hole punch':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean)
+      ? [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(item.sides==='double'?'Double-sided':'Single'),(item.paperWeight),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?(item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1)+' binding'):''),(item.lamination?('Lamination'):''),(item.holePunch?'Hole punch':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean)
       : [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(mediaLabels[item.mediaType]||item.mediaType),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?'Binding':''),(item.lamination?'Lamination':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean);
     return `<div class="cart-item"><div class="cart-item-header"><div class="cart-item-num">${i+1}</div><div class="cart-item-name" title="${item.fileName}">${item.fileName}</div><div class="cart-item-price">$${item.price.toFixed(2)}</div></div><div class="cart-item-body">${details.join(' · ')}</div><div class="cart-item-actions"><button class="cart-action-btn" onclick="editCartItem(${i})">✏️ Edit</button><button class="cart-action-btn danger" onclick="removeCartItem(${i})">🗑 Remove</button></div></div>`;
   }).join('');
