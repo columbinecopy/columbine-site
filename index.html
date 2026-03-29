@@ -341,9 +341,8 @@ footer strong{color:var(--gold)}
           <label class="field-label">Paper Weight</label>
           <select id="smallPaperWeight">
             <option value="20lb">Standard (20lb)</option>
-            <option value="24lb">Premium (24lb)</option>
-            <option value="32lb">Heavy (32lb)</option>
-            <option value="card">Cardstock (80lb)</option>
+            <option value="28lb">Premium (28lb)</option>
+            <option value="cardstock">Cardstock</option>
           </select>
         </div>
         <div class="option-group">
@@ -385,31 +384,23 @@ footer strong{color:var(--gold)}
       </div>
       <div class="divider"></div>
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
-      <div class="toggle-row" id="bindingToggle" onclick="toggleOption('binding')">
-        <input type="checkbox" id="binding">
-        <div class="toggle-label"><span>📚</span><div><div style="font-weight:600;font-size:.88rem">Binding</div><div style="font-size:.73rem;color:var(--mid)">Choose type below</div></div></div>
-        <div class="toggle-pill"></div>
-      </div>
-      <div id="bindingOptions" style="margin-top:.5rem;display:none;padding-left:.5rem">
-        <div class="radio-cards" style="flex-wrap:wrap">
-          <div class="radio-card"><input type="radio" name="bindType" id="comb" value="comb" checked><label for="comb">🗂 Comb</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="spiral" value="spiral"><label for="spiral">🌀 Spiral</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="staple" value="staple"><label for="staple">📎 Staple</label></div>
-          <div class="radio-card"><input type="radio" name="bindType" id="perfect" value="perfect"><label for="perfect">📖 Perfect</label></div>
-        </div>
+      <div class="option-group">
+        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
+        <select id="bindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+          <option value="" disabled selected>— Select binding option —</option>
+          <option value="none">No binding</option>
+          <option value="comb">🗂 Comb binding ($3.00)</option>
+          <option value="spiral">🌀 Spiral / Coil ($4.00)</option>
+          <option value="staple">📎 Staple ($0.50)</option>
+        </select>
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="laminationToggle" onclick="toggleOption('lamination')">
           <input type="checkbox" id="lamination">
-          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Glossy or matte</div></div></div>
+          <div class="toggle-label"><span>✨</span><div><div style="font-weight:600;font-size:.88rem">Lamination</div><div style="font-size:.73rem;color:var(--mid)">Protective finish</div></div></div>
           <div class="toggle-pill"></div>
         </div>
-        <div id="laminationOptions" style="margin-top:.5rem;display:none;padding-left:.5rem">
-          <div class="radio-cards">
-            <div class="radio-card"><input type="radio" name="lamType" id="glossy" value="glossy" checked><label for="glossy">💎 Glossy</label></div>
-            <div class="radio-card"><input type="radio" name="lamType" id="matte" value="matte"><label for="matte">🌫 Matte</label></div>
-          </div>
-        </div>
+        
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="holeToggle" onclick="toggleOption('hole')">
@@ -496,12 +487,12 @@ footer strong{color:var(--gold)}
       <div class="divider"></div>
       <label class="field-label" style="display:block;margin-bottom:.75rem">Finishing</label>
       <div class="option-group" style="margin-bottom:.75rem">
-        <label class="field-label">Binding</label>
-        <div class="yn-row">
-          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindYes" value="yes"><label for="lbindYes">✅ Yes</label></div>
-          <div class="yn-card"><input type="radio" name="largeBinding" id="lbindNo" value="no" checked><label for="lbindNo">❌ No</label></div>
-        </div>
-        <div style="font-size:.73rem;color:var(--mid);margin-top:.3rem">No additional charge for binding</div>
+        <label class="field-label">Binding <span style="color:#c8a0f0;font-size:.78rem">(required)</span></label>
+        <select id="largeBindingSelect" onchange="updatePrice()" style="width:100%;padding:.5rem .75rem;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+          <option value="" disabled selected>— Select binding option —</option>
+          <option value="no">No binding</option>
+          <option value="yes">Yes — include binding (no extra charge)</option>
+        </select>
       </div>
       <div style="margin-top:.5rem">
         <div class="toggle-row" id="largeLaminationToggle" onclick="toggleOption('largeLamination')">
@@ -610,62 +601,75 @@ const MINIMUM_ORDER = 3.00; // Minimum order amount
 const PRICING = {
 
   // ── SMALL FORMAT ─────────────────────────────────────────────
+  // Price per page based on total pages printed (copies × pages)
+  // Edit the bw and color values to set your exact prices
   small: {
-    // Volume tiers: price per page based on total pages printed
-    // (copies × pages per doc). Tiers are cumulative totals.
     tiers: [
-      { maxPages:  1, bw: 0.25, color: 0.99 },  // 1 page
-      { maxPages: 10, bw: 0.15, color: 0.79 },  // 2–10 pages
-      { maxPages: 99, bw: 0.12, color: 0.59 },  // 11–99 pages
-      { maxPages:199, bw: 0.10, color: 0.49 },  // 100–199 pages
-      { maxPages:Infinity, bw:0.08, color:0.39 }, // 200+ pages
+      { label: '1 page',        minPages:   1, maxPages:   1, bw: 0.39, color: 0.69 },
+      { label: '2–10 pages',    minPages:   2, maxPages:  10, bw: 0.23, color: 0.53 },
+      { label: '11–99 pages',   minPages:  11, maxPages:  99, bw: 0.15, color: 0.45 },
+      { label: '100–199 pages', minPages: 100, maxPages: 199, bw: 0.12, color: 0.39 },
+      { label: '200+ pages',    minPages: 200, maxPages: Infinity, bw: 0.12, color: 0.39 },
     ],
-    // Double-sided multiplier (1.0 = same price)
-    doubleSidedMultiplier: 1.0,
-    // Paper weight upcharges per page
+    // Double-sided multiplier (1.5 = 50% more than single-sided)
+    doubleSidedMultiplier: 1.5,
+    // Paper weight flat upcharge per page
     paperWeight: {
-      '20lb': 0.00, '24lb': 0.03, '32lb': 0.08, 'card': 0.20,
+      '20lb': 0.00, '28lb': 0.09, 'cardstock': 0.20,
     },
-    // Paper size upcharges per page
+    // Paper size flat upcharge per page
     paperSize: {
-      'letter':0.00, 'legal':0.02, 'a4':0.00, 'tabloid':0.10,
+      'letter': 0.00, 'legal': 0.08, 'a4': 0.00, 'tabloid': 0.10,
     },
-    // Binding flat fee per document
-    binding: { comb:3.00, spiral:4.00, staple:0.50, perfect:6.00 },
-    // Lamination per page
-    lamination: { glossy:1.25, matte:1.50 },
-    // Hole punch flat fee per document
-    holePunch: 0.50,
+    // Finishing flat fees per document
+    binding: { comb: 3.00, spiral: 4.00, staple: 0.50 },
+    lamination: 1.85, // flat price per page
+    holePunch: 3.00,
   },
 
   // ── LARGE FORMAT ─────────────────────────────────────────────
+  // Price per SHEET based on total sheets printed (copies × pages)
+  // Each size has its own price — edit bw and color for each size
   large: {
-    // Volume tiers: price per sheet
+    // Volume tiers — which tier applies is based on total sheet count
     tiers: [
-      { maxPages:  1, bw: 4.00, color: 8.00 },  // 1 sheet
-      { maxPages: 10, bw: 3.50, color: 7.00 },  // 2–10 sheets
-      { maxPages: 99, bw: 3.00, color: 6.00 },  // 11–99 sheets
-      { maxPages:199, bw: 2.75, color: 5.50 },  // 100–199 sheets
-      { maxPages:Infinity, bw:2.50, color:5.00 }, // 200+ sheets
+      { label: '1 sheet',        minPages:   1, maxPages:   1 },
+      { label: '2–10 sheets',    minPages:   2, maxPages:  10 },
+      { label: '11–99 sheets',   minPages:  11, maxPages:  99 },
+      { label: '100–199 sheets', minPages: 100, maxPages: 199 },
+      { label: '200+ sheets',    minPages: 200, maxPages: Infinity },
     ],
-    // Media type upcharges per sheet
+    // Price per sheet for each size and tier
+    // Format: sizeName: [ tier1price, tier2price, tier3price, tier4price, tier5price ]
+    // Tiers match the order above: 1, 2-10, 11-99, 100-199, 200+
+    sizes: {
+      //               1 sheet   2-10    11-99   100-199   200+
+      'arch-a':  { bw: [2.00,   1.75,   1.50,   1.25,   1.00], color: [4.00,  3.50,  3.00,  2.75,  2.50] },
+      'arch-b':  { bw: [2.50,   2.25,   2.00,   1.75,   1.50], color: [5.00,  4.50,  4.00,  3.50,  3.00] },
+      'arch-c':  { bw: [2.21,   1.78,   0.99,   0.76,   0.76], color: [2.63,  2.20,  1.41,  1.18,  1.18] },
+      'arch-d':  { bw: [4.42,   3.56,   1.98,   1.52,   1.52], color: [4.84,  3.98,  2.40,  1.94,  1.94] },
+      'arch-e':  { bw: [8.04,   6.48,   3.88,   3.22,   3.22], color: [8.46,  6.90,  4.30,  3.64,  3.64] },
+      'arch-e1': { bw: [6.45,   5.20,   2.89,   2.48,   2.43], color: [6.90,  5.65,  3.34,  2.93,  2.88] },
+      'arch-e2': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
+      'arch-e3': { bw: [4.00,   3.75,   3.50,   3.25,   3.00], color: [7.50,  7.00,  6.50,  6.00,  5.50] },
+      'ansi-c':  { bw: [3.00,   2.75,   2.50,   2.25,   2.00], color: [6.00,  5.50,  5.00,  4.50,  4.00] },
+      'ansi-d':  { bw: [3.50,   3.25,   3.00,   2.75,   2.50], color: [7.00,  6.50,  6.00,  5.50,  5.00] },
+      'ansi-e':  { bw: [5.00,   4.75,   4.50,   4.25,   4.00], color: [9.00,  8.50,  8.00,  7.50,  7.00] },
+    },
+    // Media type flat upcharge per sheet
     mediaType: {
-      'bond20': 0.00,   // Standard bond
-      'bond36': 1.50,   // Heavyweight bond
-      'mylar':  5.00,   // Mylar film
-      'vellum': 3.00,   // Vellum
-      'photo':  4.00,   // Photo paper
+      'bond20': 0.00,
+      'bond36': 1.50,
+      'mylar':  5.00,
+      'vellum': 3.00,
+      'photo':  4.00,
     },
-    // Paper size upcharges per sheet
-    paperSize: {
-      'arch-a':0.00,'arch-b':0.50,'arch-c':1.00,
-      'arch-d':1.50,'arch-e':2.50,'arch-e1':2.00,
-      'arch-e2':1.75,'arch-e3':1.75,
-      'ansi-c':0.75,'ansi-d':1.25,'ansi-e':2.25,
-    },
-    // Lamination per sq ft (approximate)
-    lamination: 2.50,
-    // Binding: no charge
+    // Lamination per sheet based on quantity tier
+    lamination: [
+      { maxPages:  1, price: 12.93 },  // 1 sheet
+      { maxPages: 10, price: 10.04 },  // 2–10 sheets
+      { maxPages: Infinity, price: 7.35 }, // 11+ sheets
+    ],
   },
 };
 // ════════════════════════════════════════════════════════════════
@@ -726,6 +730,11 @@ function scrollToCart() {
 // ---- FORMAT SELECTION ----
 let currentFormat = null;
 function selectFormat(fmt) {
+  // Reset binding dropdowns when switching formats
+  const smallBind = document.getElementById('bindingSelect');
+  if (smallBind) smallBind.value = '';
+  const largeBind = document.getElementById('largeBindingSelect');
+  if (largeBind) largeBind.value = '';
   currentFormat = fmt;
   document.getElementById('card-small').classList.toggle('selected', fmt==='small');
   document.getElementById('card-large').classList.toggle('selected', fmt==='large');
@@ -995,13 +1004,21 @@ function calcItemPrice(item) {
     if(item.sides==='double') base*=PRICING.small.doubleSidedMultiplier;
     price=base*totalPrinted;
     if(item.binding) price+=(PRICING.small.binding[item.bindType]||PRICING.small.binding.comb);
-    if(item.lamination) price+=(PRICING.small.lamination[item.lamType]||PRICING.small.lamination.glossy)*pages*copies;
+    if(item.lamination) price+=(PRICING.small.lamination)*pages*copies;
     if(item.holePunch) price+=PRICING.small.holePunch;
   } else {
-    const tier=getTier(PRICING.large.tiers, totalPrinted);
-    let base=(item.color==='color'?tier.color:tier.bw)+(PRICING.large.mediaType[item.mediaType]||0)+(PRICING.large.paperSize[item.paperSize]||0);
-    price=base*totalPrinted;
-    if(item.lamination) price+=PRICING.large.lamination*totalPrinted*2;
+    // Find tier index based on total sheets
+    const largeTierIdx = PRICING.large.tiers.findIndex(t => totalPrinted <= t.maxPages);
+    const ti = largeTierIdx >= 0 ? largeTierIdx : PRICING.large.tiers.length - 1;
+    // Look up exact price per sheet for this size and tier
+    const sizePrices = PRICING.large.sizes[item.paperSize] || PRICING.large.sizes['arch-d'];
+    const pricePerSheet = item.color === 'color' ? sizePrices.color[ti] : sizePrices.bw[ti];
+    const mediaUp = (PRICING.large.mediaType[item.mediaType] || 0);
+    price = (pricePerSheet + mediaUp) * totalPrinted;
+    if(item.lamination){
+    const lamTier = PRICING.large.lamination.find(t => totalPrinted <= t.maxPages) || PRICING.large.lamination.at(-1);
+    price += lamTier.price * totalPrinted;
+  }
   }
   return price;
 }
@@ -1020,10 +1037,10 @@ function getCurrentSettings() {
       sides:document.querySelector('input[name="sides"]:checked')?.value||'single',
       paperSize:document.getElementById('paperSize').value,
       paperWeight:document.getElementById('smallPaperWeight').value,
-      binding:document.getElementById('binding').checked,
-      bindType:document.querySelector('input[name="bindType"]:checked')?.value||'comb',
+      binding: document.getElementById('bindingSelect').value !== '' && document.getElementById('bindingSelect').value !== 'none',
+      bindType: document.getElementById('bindingSelect').value !== 'none' ? document.getElementById('bindingSelect').value : '',
       lamination:document.getElementById('lamination').checked,
-      lamType:document.querySelector('input[name="lamType"]:checked')?.value||'glossy',
+      
       holePunch:document.getElementById('hole').checked,
       notes:document.getElementById('fileNotes').value,
     };
@@ -1036,7 +1053,7 @@ function getCurrentSettings() {
       color:document.querySelector('input[name="largeColor"]:checked')?.value||'bw',
       paperSize:document.getElementById('largePaperSize').value,
       mediaType:document.getElementById('largePaperType').value,
-      binding:document.querySelector('input[name="largeBinding"]:checked')?.value==='yes',
+      binding: document.getElementById('largeBindingSelect').value === 'yes',
       lamination:document.getElementById('largeLamination').checked,
       notes:document.getElementById('lFileNotes').value,
     };
@@ -1062,6 +1079,26 @@ function updateAddToCartBtn() {
 // ---- CART OPERATIONS ----
 function addToCart() {
   if (!currentFile || !currentFormat) return;
+  // Require binding selection for both formats
+  if (currentFormat === 'small') {
+    if (!document.getElementById('bindingSelect').value) {
+      alert('Please select a binding option before adding to cart.');
+      document.getElementById('bindingSelect').focus();
+      return;
+    }
+  }
+  if (currentFormat === 'large') {
+    if (!document.getElementById('largeBindingSelect').value) {
+      alert('Please select a binding option before adding to cart.');
+      document.getElementById('largeBindingSelect').focus();
+      return;
+    }
+  }
+  // When editing, preserve the original file object if no new file was uploaded
+  if (editingIndex >= 0 && !currentFile.file && cart[editingIndex]) {
+    currentFile.file = (window.uploadedFiles||[]).find(f=>f.name===cart[editingIndex].fileName)?.file || null;
+    currentFile.pageCount = currentFile.pageCount || cart[editingIndex].totalPages;
+  }
   const settings = getCurrentSettings();
   settings.price = calcItemPrice(settings);
   if (editingIndex >= 0) {
@@ -1083,49 +1120,61 @@ function editCartItem(idx) {
   const item = cart[idx];
   if (!item) return;
   editingIndex = idx;
+
   // Restore format
   selectFormat(item.format);
-  // Restore settings
-  if (item.format==='small') {
-    document.getElementById('paperSize').value=item.paperSize;
-    document.getElementById('smallPaperWeight').value=item.paperWeight;
-    document.getElementById('copies').value=item.copies;
-    document.querySelector('input[name="color"][value="'+item.color+'"]').checked=true;
-    document.querySelector('input[name="sides"][value="'+item.sides+'"]').checked=true;
-    // binding
-    document.getElementById('binding').checked=item.binding;
-    document.getElementById('bindingToggle').classList.toggle('checked',item.binding);
-    document.getElementById('bindingOptions').style.display=item.binding?'block':'none';
-    if(item.binding) document.querySelector('input[name="bindType"][value="'+item.bindType+'"]').checked=true;
-    // lamination
-    document.getElementById('lamination').checked=item.lamination;
-    document.getElementById('laminationToggle').classList.toggle('checked',item.lamination);
-    document.getElementById('laminationOptions').style.display=item.lamination?'block':'none';
-    if(item.lamination) document.querySelector('input[name="lamType"][value="'+item.lamType+'"]').checked=true;
-    // hole
-    document.getElementById('hole').checked=item.holePunch;
-    document.getElementById('holeToggle').classList.toggle('checked',item.holePunch);
-    document.getElementById('fileNotes').value=item.notes||'';
+
+  if (item.format === 'small') {
+    document.getElementById('paperSize').value = item.paperSize;
+    document.getElementById('smallPaperWeight').value = item.paperWeight;
+    document.getElementById('copies').value = item.copies;
+    // color
+    const colorBtn = document.querySelector('input[name="color"][value="'+item.color+'"]');
+    if (colorBtn) colorBtn.checked = true;
+    // sides
+    const sidesBtn = document.querySelector('input[name="sides"][value="'+item.sides+'"]');
+    if (sidesBtn) sidesBtn.checked = true;
+    // binding — restore dropdown
+    document.getElementById('bindingSelect').value = item.binding ? (item.bindType || 'none') : 'none';
+    // lamination — simple yes/no now
+    document.getElementById('lamination').checked = item.lamination;
+    document.getElementById('laminationToggle').classList.toggle('checked', item.lamination);
+    // hole punch
+    document.getElementById('hole').checked = item.holePunch;
+    document.getElementById('holeToggle').classList.toggle('checked', item.holePunch);
+    // notes
+    document.getElementById('fileNotes').value = item.notes || '';
+    // page ranges
+    if (item.ranges) restoreRanges('smallRangeList', item.ranges, item.allPages);
   } else {
-    document.getElementById('largePaperSize').value=item.paperSize;
-    document.getElementById('largePaperType').value=item.mediaType;
-    document.getElementById('largeCopies').value=item.copies;
-    document.querySelector('input[name="largeColor"][value="'+item.color+'"]').checked=true;
-    document.querySelector('input[name="largeBinding"][value="'+( item.binding?'yes':'no')+'"]').checked=true;
-    document.getElementById('largeLamination').checked=item.lamination;
-    document.getElementById('largeLaminationToggle').classList.toggle('checked',item.lamination);
-    document.getElementById('lFileNotes').value=item.notes||'';
+    document.getElementById('largePaperSize').value = item.paperSize;
+    document.getElementById('largePaperType').value = item.mediaType;
+    document.getElementById('largeCopies').value = item.copies;
+    // color
+    const lColorBtn = document.querySelector('input[name="largeColor"][value="'+item.color+'"]');
+    if (lColorBtn) lColorBtn.checked = true;
+    // binding — restore dropdown
+    document.getElementById('largeBindingSelect').value = item.binding ? 'yes' : 'no';
+    // lamination
+    document.getElementById('largeLamination').checked = item.lamination;
+    document.getElementById('largeLaminationToggle').classList.toggle('checked', item.lamination);
+    // notes
+    document.getElementById('lFileNotes').value = item.notes || '';
+    // page ranges
+    if (item.ranges) restoreRanges('largeRangeList', item.ranges, item.allPages);
   }
-  document.getElementById('editNotice').style.display='block';
-  document.getElementById('cancelEditBtn').style.display='inline';
-  document.getElementById('addToCartBtn').textContent='💾 Save Changes';
-  // Show note that file needs to be re-attached
-  currentFile = null;
+
+  // Keep the existing file — no need to re-upload just to change options
+  currentFile = { file: null, name: item.fileName, size: 0, pageCount: item.totalPages, pdfDoc: null, detectedSize: item.paperSize };
   const area = document.getElementById('currentFileArea');
-  area.innerHTML='<div style="margin-top:.6rem;padding:.6rem .9rem;background:#fff8e1;border:1px solid #f0c040;border-radius:4px;font-size:.8rem;color:#7a5c00">⚠️ Re-attach the file for <strong>'+item.fileName+'</strong> to save changes</div>';
-  document.getElementById('uploadTitle').textContent='Re-attach: '+item.fileName;
+  area.innerHTML = '<div style="margin-top:.6rem;padding:.6rem .9rem;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;font-size:.8rem;color:#2e7d32">✅ Editing: <strong>'+item.fileName+'</strong> — change options below and click Save</div>';
+  document.getElementById('uploadTitle').textContent = 'Editing: ' + item.fileName;
+
+  document.getElementById('editNotice').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'inline';
+  document.getElementById('addToCartBtn').textContent = '💾 Save Changes';
   updateAddToCartBtn();
-  document.getElementById('mainForm').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('mainForm').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function cancelEdit() {
@@ -1163,7 +1212,7 @@ function renderCart() {
   area.innerHTML=cart.map((item,i)=>{
     total+=item.price;
     const details=item.format==='small'
-      ? [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(item.sides==='double'?'Double-sided':'Single'),(item.paperWeight),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?(item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1)+' binding'):''),(item.lamination?(item.lamType+' lam'):''),(item.holePunch?'Hole punch':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean)
+      ? [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(item.sides==='double'?'Double-sided':'Single'),(item.paperWeight),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?(item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1)+' binding'):''),(item.lamination?('Lamination'):''),(item.holePunch?'Hole punch':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean)
       : [(item.color==='color'?'Color':'B&W'),(paperSizeLabels[item.paperSize]||item.paperSize),(mediaLabels[item.mediaType]||item.mediaType),'Copies: '+item.copies,'Pages: '+item.rangeStr+(item.totalPages?(' ('+item.totalPages+')') :''),(item.binding?'Binding':''),(item.lamination?'Lamination':''),(item.notes?'Note: '+item.notes:'')].filter(Boolean);
     return `<div class="cart-item"><div class="cart-item-header"><div class="cart-item-num">${i+1}</div><div class="cart-item-name" title="${item.fileName}">${item.fileName}</div><div class="cart-item-price">$${item.price.toFixed(2)}</div></div><div class="cart-item-body">${details.join(' · ')}</div><div class="cart-item-actions"><button class="cart-action-btn" onclick="editCartItem(${i})">✏️ Edit</button><button class="cart-action-btn danger" onclick="removeCartItem(${i})">🗑 Remove</button></div></div>`;
   }).join('');
