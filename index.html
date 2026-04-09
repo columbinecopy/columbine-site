@@ -619,7 +619,7 @@ const PRICING = {
     },
     // Paper size flat upcharge per page
     paperSize: {
-      'letter': 0.00, 'legal': 0.23, 'a4': 0.00, 'tabloid': 0.10,
+      'letter': 0.00, 'legal': 0.08, 'a4': 0.00, 'tabloid': 0.10,
     },
     // Finishing flat fees per document
     binding: { comb: 3.00, spiral: 4.00, staple: 0.50 },
@@ -759,6 +759,10 @@ fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) loadSingleFile
 
 function loadSingleFile(file) {
   currentFile = { file, name:file.name, size:file.size, pageCount:null, pdfDoc:null, detectedSize:null };
+  // Warn if file is too large (over 4MB may cause checkout issues)
+  if (file.size > 4 * 1024 * 1024) {
+    alert(`⚠️ Warning: "${file.name}" is ${(file.size/1024/1024).toFixed(1)}MB. Large files may cause checkout issues. We recommend compressing PDFs to under 4MB before uploading.`);
+  }
   // Track file objects so we can read them at checkout
   if (!window.uploadedFiles) window.uploadedFiles = [];
   window.uploadedFiles = window.uploadedFiles.filter(f => f.name !== file.name);
@@ -1317,14 +1321,24 @@ async function handlePayment(){
   try{
     const result=await squareCard.tokenize();
     if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64
+    // Collect PDF files as base64 and check total size
     const pdfFiles = [];
+    let totalBase64Size = 0;
     for (const item of cart) {
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
       if (tracked && tracked.file) {
         try {
           const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          pdfFiles.push({name:tracked.name, data:b64});
+          totalBase64Size += b64.length;
+          // If total payload would exceed 5MB warn and skip attachment
+          if (totalBase64Size > 5 * 1024 * 1024) {
+            console.warn('PDF too large to attach:', item.fileName);
+            status.textContent = `"${item.fileName}" is too large to send automatically. Your order will still be placed — please email the file to print@columbinecopy.com with your order number.`;
+            // Still add to pdfFiles but without data so order goes through
+            pdfFiles.push({name:tracked.name, data:null, tooLarge:true});
+          } else {
+            pdfFiles.push({name:tracked.name, data:b64});
+          }
         } catch(e){ console.warn('Could not read:',item.fileName); }
       }
     }
@@ -1347,7 +1361,17 @@ async function handlePayment(){
     const data=await response.json();
     if(data.success){ document.getElementById('orderRef').textContent=data.orderId||('CCA-'+Math.floor(100000+Math.random()*900000)); document.getElementById('successModal').classList.add('visible'); }
     else{ status.textContent=data.error||'Payment failed.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
-  }catch(err){ status.textContent='Network error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
+  }catch(err){
+    console.error('Payment fetch error:', err);
+    if(err.message && err.message.includes('413')) {
+      status.textContent='Your PDF file is too large to upload. Please compress it and try again.';
+    } else if(err.message && err.message.includes('502')) {
+      status.textContent='Server error — please try again in a moment.';
+    } else {
+      status.textContent='Network error — please check your connection and try again. If this persists please call us directly.';
+    }
+    btn.disabled=false; btn.textContent='🔒 Pay & Place Order';
+  }
 }
 
 function showPayment(){
