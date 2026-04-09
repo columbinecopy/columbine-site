@@ -153,6 +153,10 @@ exports.handler = async function(event) {
   const attachments = [];
   if (pdfFiles && pdfFiles.length > 0) {
     for (const f of pdfFiles) {
+      if (f.tooLarge || !f.data) {
+        console.log(`⚠️ File too large to attach: ${f.name} — customer will email separately`);
+        continue;
+      }
       try {
         const clean = f.data.replace(/^data:[^;]+;base64,/, '');
         attachments.push({ filename: f.name, content: clean });
