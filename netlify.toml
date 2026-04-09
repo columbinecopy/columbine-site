@@ -4,6 +4,12 @@
 [build.environment]
   NODE_VERSION = "18"
 
+[functions]
+  included_files = ["netlify/functions/**"]
+
+[functions."create-payment"]
+  timeout = 26
+
 [[headers]]
   for = "/*"
   [headers.values]
