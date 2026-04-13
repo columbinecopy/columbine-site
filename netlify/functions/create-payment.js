@@ -155,9 +155,16 @@ async function generateJobTicketPDF(orderId, customer, cartItems, orderNotes, to
     // ── HEADER BAR ──
     doc.rect(40, 40, W, 64).fill(dark);
 
-    // Logo placeholder circle
-    doc.circle(72, 72, 20).fill(purple);
-    doc.fontSize(8).fillColor('white').text('CCA', 62, 68);
+    // Logo (small, top left of header)
+    try {
+      const path = require('path');
+      const logoPath = path.join(__dirname, '..', '..', 'logo.png');
+      doc.image(logoPath, 44, 46, { height: 52, fit: [52, 52] });
+    } catch(e) {
+      // fallback if logo not found
+      doc.circle(72, 72, 20).fill(purple);
+      doc.fontSize(8).fillColor('white').text('CCA', 62, 68);
+    }
 
     // Business name & tagline
     doc.fontSize(16).font('Helvetica-Bold').fillColor('white')
@@ -247,15 +254,7 @@ async function generateJobTicketPDF(orderId, customer, cartItems, orderNotes, to
         y += 12;
       }
 
-      // Drive link
-      if (driveLink) {
-        doc.fontSize(7.5).font('Helvetica').fillColor(purple)
-           .text(`Print File: ${driveLink.webViewLink}`, col1, y, { width: W - 20 });
-      } else {
-        doc.fontSize(7.5).font('Helvetica').fillColor('#cc0000')
-           .text('No file uploaded for this item', col1, y);
-      }
-      y += 16;
+      // Drive link intentionally omitted from printed job ticket
 
       // Production status checkboxes
       doc.rect(40, y, W, 22).fill('#ece6f7').stroke('#d4c8e8');
