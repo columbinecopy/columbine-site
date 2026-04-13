@@ -119,14 +119,16 @@ async function uploadToGoogleDrive(accessToken, fileName, fileData, mimeType = '
   return result.body;
 }
 
-// ── Generate printable HTML job ticket (sent as email attachment) ─────────────
-function generateJobTicketHtml(orderId, customer, cartItems, orderNotes, totalAmount, subtotalAmount, taxAmount, driveLinks, orderDate) {
+// ── Generate PDF job ticket ──────────────────────────────────────────────────
+async function generateJobTicketPDF(orderId, customer, cartItems, orderNotes, totalAmount, subtotalAmount, taxAmount, driveLinks, orderDate) {
+  const PDFDocument = require('pdfkit');
+
   const sizeLabels = {
-    letter:'Letter (8.5"×11")', legal:'Legal (8.5"×14")', a4:'A4 (210×297mm)',
-    tabloid:'Tabloid (11"×17")', 'arch-a':'Arch A (9"×12")', 'arch-b':'Arch B (12"×18")',
-    'arch-c':'Arch C (18"×24")', 'arch-d':'Arch D (24"×36")', 'arch-e':'Arch E (36"×48")',
-    'arch-e1':'Arch E1 (30"×42")', 'arch-e2':'Arch E2 (26"×38")', 'arch-e3':'Arch E3 (27"×39")',
-    'ansi-c':'ANSI C (17"×22")', 'ansi-d':'ANSI D (22"×34")', 'ansi-e':'ANSI E (34"×44")',
+    letter:'Letter (8.5"x11")', legal:'Legal (8.5"x14")', a4:'A4 (210x297mm)',
+    tabloid:'Tabloid (11"x17")', 'arch-a':'Arch A (9"x12")', 'arch-b':'Arch B (12"x18")',
+    'arch-c':'Arch C (18"x24")', 'arch-d':'Arch D (24"x36")', 'arch-e':'Arch E (36"x48")',
+    'arch-e1':'Arch E1 (30"x42")', 'arch-e2':'Arch E2 (26"x38")', 'arch-e3':'Arch E3 (27"x39")',
+    'ansi-c':'ANSI C (17"x22")', 'ansi-d':'ANSI D (22"x34")', 'ansi-e':'ANSI E (34"x44")',
   };
   const mediaLabels = {
     bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
@@ -134,115 +136,159 @@ function generateJobTicketHtml(orderId, customer, cartItems, orderNotes, totalAm
   };
   const bindLabels = {
     none:'No Binding', comb:'Comb Binding', spiral:'Spiral/Coil', staple:'Staple',
-    no:'No Binding', yes:'Yes — Binding included',
+    no:'No Binding', yes:'Binding included',
   };
 
-  const itemRows = (cartItems || []).map((item, i) => {
-    const driveLink = driveLinks[i];
-    return `
-      <div style="page-break-inside:avoid;border:1.5px solid #d4c8e8;border-radius:6px;margin-bottom:14px;overflow:hidden">
-        <div style="background:#1a0a2e;padding:10px 16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="color:#c8a0f0;font-family:Oswald,Arial,sans-serif;font-weight:700;font-size:1rem">
-            Item ${i + 1} — ${item.fileName || 'File'}
-          </span>
-          <span style="color:#ffffff;font-family:Oswald,Arial,sans-serif;font-size:1.1rem;font-weight:700">
-            $${Number(item.price || 0).toFixed(2)}
-          </span>
-        </div>
-        <div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:0.82rem">
-          <div><b>Format:</b> ${item.format === 'large' ? 'Large Format' : 'Small Format'}</div>
-          <div><b>Paper Size:</b> ${sizeLabels[item.paperSize] || item.paperSize || '—'}</div>
-          <div><b>Color:</b> ${item.color === 'color' ? 'Full Color' : 'Black & White'}</div>
-          <div><b>Copies:</b> ${item.copies || 1}</div>
-          ${item.format === 'small' ? `<div><b>Paper Weight:</b> ${item.paperWeight || '—'}</div>` : `<div><b>Media Type:</b> ${mediaLabels[item.mediaType] || item.mediaType || '—'}</div>`}
-          ${item.sides ? `<div><b>Sides:</b> ${item.sides === 'double' ? 'Double-sided' : 'Single-sided'}</div>` : '<div></div>'}
-          <div><b>Pages:</b> ${item.rangeStr || 'All'} ${item.totalPages ? `(${item.totalPages} total)` : ''}</div>
-          <div><b>Binding:</b> ${bindLabels[item.bindType] || item.bindType || 'None'}</div>
-          ${item.lamination ? `<div><b>Lamination:</b> ${item.lamType || 'Yes'}</div>` : '<div></div>'}
-          ${item.holePunch ? '<div><b>Hole Punch:</b> Yes</div>' : '<div></div>'}
-          ${item.notes ? `<div style="grid-column:1/-1"><b>File Notes:</b> ${item.notes}</div>` : ''}
-          ${driveLink ? `<div style="grid-column:1/-1;margin-top:4px">
-            <b>📁 Print File:</b> <a href="${driveLink.webViewLink}" style="color:#6b27b8;word-break:break-all">${driveLink.webViewLink}</a>
-          </div>` : `<div style="grid-column:1/-1;color:#cc0000"><b>⚠ File:</b> No file uploaded for this item</div>`}
-        </div>
-        <div style="padding:6px 16px 10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6e5a8a">Production Status:</span>
-            <span style="display:inline-block;border:1.5px solid #d4c8e8;border-radius:4px;padding:2px 20px;font-size:.8rem;color:#999">□ In Queue &nbsp;&nbsp; □ Printing &nbsp;&nbsp; □ Finishing &nbsp;&nbsp; □ Ready</span>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'LETTER', margin: 40 });
+    const chunks = [];
+    doc.on('data', c => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Open Sans', Arial, sans-serif; color: #1a0a2e; background: white; font-size: 13px; }
-  @media print {
-    body { font-size: 11px; }
-    .no-print { display: none; }
-  }
-</style>
-</head>
-<body style="padding:24px;max-width:800px;margin:0 auto">
+    const purple = '#6b27b8';
+    const dark   = '#1a0a2e';
+    const mid    = '#6e5a8a';
+    const light  = '#f4f0fb';
+    const W      = 612 - 80; // page width minus margins
 
-  <!-- HEADER -->
-  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #6b27b8;padding-bottom:14px;margin-bottom:18px">
-    <div style="display:flex;align-items:center;gap:14px">
-      <img src="https://print.columbinecopy.com/COLUMBINE-a.png" alt="Logo" style="height:56px;width:auto" onerror="this.style.display='none'">
-      <div>
-        <div style="font-family:Oswald,Arial,sans-serif;font-size:1.3rem;font-weight:700;color:#1a0a2e;line-height:1.1">Columbine Copy &amp; Apparel</div>
-        <div style="font-size:0.72rem;color:#6e5a8a;letter-spacing:2px;text-transform:uppercase">Print Job Ticket</div>
-      </div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-family:Oswald,Arial,sans-serif;font-size:1.6rem;font-weight:700;color:#6b27b8;letter-spacing:2px">${orderId}</div>
-      <div style="font-size:0.75rem;color:#6e5a8a">${orderDate}</div>
-    </div>
-  </div>
+    // ── HEADER BAR ──
+    doc.rect(40, 40, W, 64).fill(dark);
 
-  <!-- CUSTOMER INFO -->
-  <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:12px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-    <div><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#6e5a8a;font-weight:600">Customer</div><div style="font-weight:700;font-size:.95rem">${customer?.name || '—'}</div></div>
-    <div><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#6e5a8a;font-weight:600">Email</div><div>${customer?.email || '—'}</div></div>
-    <div><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#6e5a8a;font-weight:600">Phone</div><div>${customer?.phone || '—'}</div></div>
-    ${orderNotes ? `<div style="grid-column:1/-1"><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:#6e5a8a;font-weight:600">Order Notes</div><div>${orderNotes}</div></div>` : ''}
-  </div>
+    // Logo placeholder circle
+    doc.circle(72, 72, 20).fill(purple);
+    doc.fontSize(8).fillColor('white').text('CCA', 62, 68);
 
-  <!-- LINE ITEMS -->
-  <div style="margin-bottom:16px">
-    <div style="font-family:Oswald,Arial,sans-serif;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#6e5a8a;margin-bottom:8px">Order Items</div>
-    ${itemRows}
-  </div>
+    // Business name & tagline
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('white')
+       .text('Columbine Copy & Apparel', 100, 48, { width: 280 });
+    doc.fontSize(7.5).font('Helvetica').fillColor('#c8a0f0')
+       .text('419 N. 1st Street, Montrose, CO 81401  |  (970) 249-4418  |  ColumbineCopy.com', 100, 70);
 
-  <!-- TOTALS -->
-  <div style="border-top:2px solid #d4c8e8;padding-top:12px;display:flex;justify-content:flex-end">
-    <div style="min-width:220px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:.82rem;color:#6e5a8a">
-        <span>Subtotal</span><span>$${subtotalAmount}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:.82rem;color:#6e5a8a">
-        <span>Tax (8.53%)</span><span>$${taxAmount}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;background:#1a0a2e;border-radius:4px;padding:10px 14px">
-        <span style="font-family:Oswald,Arial,sans-serif;color:#9a8ab0;font-size:.8rem;text-transform:uppercase;letter-spacing:1px">Total Paid</span>
-        <span style="font-family:Oswald,Arial,sans-serif;color:#c8a0f0;font-size:1.3rem;font-weight:700">$${totalAmount}</span>
-      </div>
-    </div>
-  </div>
+    // Order ID box (top right)
+    doc.rect(430, 44, W - 390, 52).fill(purple);
+    doc.fontSize(8).font('Helvetica').fillColor('white').text('ORDER', 435, 50);
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('white').text(orderId, 435, 62, { width: W - 395 });
 
-  <!-- FOOTER -->
-  <div style="margin-top:20px;padding-top:10px;border-top:1px solid #d4c8e8;display:flex;justify-content:space-between;font-size:.72rem;color:#9a8ab0">
-    <span>Columbine Copy &amp; Apparel · 419 N 1st St, Montrose, CO 81401 · (970) 249-4418</span>
-    <span>All files kept confidential and deleted after printing</span>
-  </div>
+    // ── CUSTOMER NAME (large, prominent) ──
+    doc.rect(40, 114, W, 44).fill(light).stroke('#d4c8e8');
+    doc.fontSize(9).font('Helvetica').fillColor(mid).text('CUSTOMER', 50, 120);
+    doc.fontSize(22).font('Helvetica-Bold').fillColor(dark)
+       .text(customer?.name || '—', 50, 130, { width: W - 20 });
 
-</body>
-</html>`;
+    // ── CUSTOMER DETAILS ROW ──
+    let y = 168;
+    doc.rect(40, y, W, 32).fill('#ece6f7');
+    doc.fontSize(7.5).font('Helvetica').fillColor(mid);
+    doc.text(`Email: ${customer?.email || '—'}`, 50, y + 6);
+    doc.text(`Phone: ${customer?.phone || '—'}`, 250, y + 6);
+    doc.text(`Date: ${orderDate}`, 400, y + 6);
+    if (orderNotes) {
+      doc.text(`Notes: ${orderNotes}`, 50, y + 18, { width: W - 20 });
+    }
+
+    y = 210;
+
+    // ── LINE ITEMS ──
+    (cartItems || []).forEach((item, i) => {
+      const driveLink = driveLinks[i];
+
+      // Check if we need a new page
+      if (y > 650) { doc.addPage(); y = 40; }
+
+      // Item header bar
+      doc.rect(40, y, W, 22).fill(dark);
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('white')
+         .text(`Item ${i + 1} — ${item.fileName || 'File'}`, 50, y + 6, { width: W - 100 });
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#c8a0f0')
+         .text(`$${Number(item.price || 0).toFixed(2)}`, 40, y + 6, { width: W - 10, align: 'right' });
+      y += 22;
+
+      // Item details box
+      doc.rect(40, y, W, 110).fill(light).stroke('#d4c8e8');
+      y += 8;
+
+      // Left column
+      const col1 = 50, col2 = 310;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor(dark);
+
+      const details = [
+        ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
+        ['Paper Size', sizeLabels[item.paperSize] || item.paperSize || '—'],
+        ['Color Mode', item.color === 'color' ? 'Full Color' : 'Black & White'],
+        ['Copies', String(item.copies || 1)],
+      ];
+      const details2 = [
+        ['Media/Paper', item.format === 'small' ? (item.paperWeight || '—') : (mediaLabels[item.mediaType] || item.mediaType || '—')],
+        ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'],
+        ['Pages', `${item.rangeStr || 'All'} ${item.totalPages ? '(' + item.totalPages + ' total)' : ''}`],
+        ['Binding', bindLabels[item.bindType] || item.bindType || 'None'],
+      ];
+
+      details.forEach((d, di) => {
+        doc.font('Helvetica-Bold').fillColor(mid).text(d[0] + ':', col1, y + (di * 16), { width: 80 });
+        doc.font('Helvetica').fillColor(dark).text(d[1], col1 + 82, y + (di * 16), { width: 150 });
+      });
+      details2.forEach((d, di) => {
+        doc.font('Helvetica-Bold').fillColor(mid).text(d[0] + ':', col2, y + (di * 16), { width: 80 });
+        doc.font('Helvetica').fillColor(dark).text(d[1], col2 + 82, y + (di * 16), { width: 150 });
+      });
+
+      y += 68;
+
+      // Extras row
+      const extras = [];
+      if (item.lamination) extras.push(`Lamination: ${item.lamType || 'Yes'}`);
+      if (item.holePunch) extras.push('Hole Punch: Yes');
+      if (item.notes) extras.push(`Notes: ${item.notes}`);
+      if (extras.length) {
+        doc.fontSize(7.5).font('Helvetica').fillColor(mid)
+           .text(extras.join('  |  '), col1, y, { width: W - 20 });
+        y += 12;
+      }
+
+      // Drive link
+      if (driveLink) {
+        doc.fontSize(7.5).font('Helvetica').fillColor(purple)
+           .text(`Print File: ${driveLink.webViewLink}`, col1, y, { width: W - 20 });
+      } else {
+        doc.fontSize(7.5).font('Helvetica').fillColor('#cc0000')
+           .text('No file uploaded for this item', col1, y);
+      }
+      y += 16;
+
+      // Production status checkboxes
+      doc.rect(40, y, W, 22).fill('#ece6f7').stroke('#d4c8e8');
+      doc.fontSize(8).font('Helvetica-Bold').fillColor(mid).text('STATUS:', 50, y + 6);
+      const stages = ['In Queue', 'Printing', 'Finishing', 'Ready for Pickup'];
+      stages.forEach((stage, si) => {
+        const sx = 120 + (si * 110);
+        doc.rect(sx, y + 5, 10, 10).stroke(mid);
+        doc.fontSize(7.5).font('Helvetica').fillColor(dark).text(stage, sx + 14, y + 6);
+      });
+      y += 30;
+    });
+
+    // ── TOTALS ──
+    if (y > 680) { doc.addPage(); y = 40; }
+    y += 6;
+    doc.rect(40, y, W, 52).fill(dark);
+    doc.fontSize(8).font('Helvetica').fillColor('#9a8ab0')
+       .text(`Subtotal: $${subtotalAmount}`, 50, y + 8)
+       .text(`Tax (8.53%): $${taxAmount}`, 50, y + 20);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#9a8ab0')
+       .text('TOTAL PAID', 400, y + 10);
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#c8a0f0')
+       .text(`$${totalAmount}`, 400, y + 24);
+
+    // ── FOOTER ──
+    y += 62;
+    doc.fontSize(7).font('Helvetica').fillColor(mid)
+       .text('Columbine Copy & Apparel  ·  419 N. 1st Street, Montrose, CO 81401  ·  (970) 249-4418  ·  ColumbineCopy.com', 40, y, { width: W, align: 'center' })
+       .text('All files are kept confidential and deleted after printing', 40, y + 10, { width: W, align: 'center' });
+
+    doc.end();
+  });
 }
 
 // ── Send email via Resend ─────────────────────────────────────────────────────
@@ -416,15 +462,19 @@ exports.handler = async function(event) {
         ⚠ No files were uploaded to Google Drive — customer may need to resend
        </p>`;
 
-  // ── 4. Generate job ticket HTML (attached to owner email) ─────────────────
-  const jobTicketHtml = generateJobTicketHtml(
-    orderId, customer, cartItems, orderNotes,
-    totalAmount, subtotalAmount, taxAmount,
-    driveLinks, orderDate
-  );
-
-  // Encode job ticket as base64 for email attachment
-  const jobTicketBase64 = Buffer.from(jobTicketHtml).toString('base64');
+  // ── 4. Generate PDF job ticket (attached to owner email) ──────────────────
+  let jobTicketBase64 = null;
+  try {
+    const jobTicketPDF = await generateJobTicketPDF(
+      orderId, customer, cartItems, orderNotes,
+      totalAmount, subtotalAmount, taxAmount,
+      driveLinks, orderDate
+    );
+    jobTicketBase64 = jobTicketPDF.toString('base64');
+    console.log('✅ Job ticket PDF generated');
+  } catch(e) {
+    console.error('Job ticket PDF error:', e.message);
+  }
 
   // ── 5. Email owner ────────────────────────────────────────────────────────
   await sendEmail(
@@ -463,7 +513,7 @@ exports.handler = async function(event) {
         </p>
       </div>
     </div>`,
-    [{ filename: `JobTicket_${orderId}.html`, content: jobTicketBase64 }]
+    jobTicketBase64 ? [{ filename: `JobTicket_${orderId}.pdf`, content: jobTicketBase64 }] : []
   );
 
   // ── 6. Email customer confirmation ────────────────────────────────────────
