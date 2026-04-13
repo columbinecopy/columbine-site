@@ -36,21 +36,25 @@ function httpsRequest(options, body) {
   });
 }
 
-// ── Google Auth: get access token from service account ───────────────────────
+// ── Google Auth: get access token using domain-wide delegation ───────────────
+// The service account impersonates print@columbinecopy.com so files are
+// uploaded using that account's Drive storage quota.
 async function getGoogleAccessToken() {
   const sa = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  const impersonateEmail = process.env.OWNER_EMAIL; // print@columbinecopy.com
   const now = Math.floor(Date.now() / 1000);
+  const { createSign } = require('crypto');
+
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
   const claim = Buffer.from(JSON.stringify({
     iss: sa.client_email,
+    sub: impersonateEmail,   // <-- impersonate the Workspace user
     scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
   })).toString('base64url');
 
-  // Sign with RSA-SHA256 using the service account private key
-  const { createSign } = require('crypto');
   const sign = createSign('RSA-SHA256');
   sign.update(`${header}.${claim}`);
   const signature = sign.sign(sa.private_key, 'base64url');
