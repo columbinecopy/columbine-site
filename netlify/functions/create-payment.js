@@ -76,31 +76,17 @@ async function getGoogleAccessToken() {
 // ── Upload file to Google Drive ───────────────────────────────────────────────
 async function uploadToGoogleDrive(accessToken, fileName, fileData, mimeType = 'application/pdf') {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  const fileBuffer = Buffer.from(fileData, 'base64');
 
   const boundary = '-------CCABoundary';
-  const metaPart = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    JSON.stringify({ name: fileName, parents: folderId ? [folderId] : [] }),
-    '',
-  ].join('\r\n');
-
-  const dataPart = [
-    `--${boundary}`,
-    `Content-Type: ${mimeType}`,
-    'Content-Transfer-Encoding: base64',
-    '',
-    fileData,
-    `--${boundary}--`,
-  ].join('\r\n');
-
+  const metadata = JSON.stringify({ name: fileName, parents: folderId ? [folderId] : [] });
+  const metaPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`;
+  const dataPart = `--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n${fileData}\r\n--${boundary}--`;
   const body = Buffer.from(metaPart + dataPart);
 
+  // supportsAllDrives=true tells Google to use the folder owner's quota
   const result = await httpsRequest({
     hostname: 'www.googleapis.com',
-    path: '/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,name',
+    path: '/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink,name',
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -114,16 +100,17 @@ async function uploadToGoogleDrive(accessToken, fileName, fileData, mimeType = '
   }
 
   // Make file viewable by anyone with the link
+  const permPayload = JSON.stringify({ role: 'reader', type: 'anyone' });
   await httpsRequest({
     hostname: 'www.googleapis.com',
-    path: `/drive/v3/files/${result.body.id}/permissions`,
+    path: `/drive/v3/files/${result.body.id}/permissions?supportsAllDrives=true`,
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(JSON.stringify({ role: 'reader', type: 'anyone' })),
+      'Content-Length': Buffer.byteLength(permPayload),
     },
-  }, JSON.stringify({ role: 'reader', type: 'anyone' }));
+  }, permPayload);
 
   return result.body;
 }
