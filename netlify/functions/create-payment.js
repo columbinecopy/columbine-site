@@ -159,11 +159,11 @@ async function generateJobTicketPDF(orderId, customer, cartItems, orderNotes, to
     const path = require('path');
     // Try multiple possible paths since Netlify Functions file structure varies
     const logoPaths = [
+      '/var/task/logo.png',
+      path.join(process.cwd(), 'logo.png'),
       path.join(__dirname, '..', '..', 'logo.png'),
       path.join(__dirname, '..', 'logo.png'),
       path.join(__dirname, 'logo.png'),
-      path.join(process.cwd(), 'logo.png'),
-      path.join(process.cwd(), 'netlify', 'functions', 'logo.png'),
     ];
     let logoLoaded = false;
     for (const logoPath of logoPaths) {
