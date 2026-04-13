@@ -759,10 +759,6 @@ fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) loadSingleFile
 
 function loadSingleFile(file) {
   currentFile = { file, name:file.name, size:file.size, pageCount:null, pdfDoc:null, detectedSize:null };
-  // Warn if file is too large (over 4MB may cause checkout issues)
-  if (file.size > 4 * 1024 * 1024) {
-    alert(`⚠️ Warning: "${file.name}" is ${(file.size/1024/1024).toFixed(1)}MB. Large files may cause checkout issues. We recommend compressing PDFs to under 4MB before uploading.`);
-  }
   // Track file objects so we can read them at checkout
   if (!window.uploadedFiles) window.uploadedFiles = [];
   window.uploadedFiles = window.uploadedFiles.filter(f => f.name !== file.name);
