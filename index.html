@@ -1376,7 +1376,11 @@ function closeModal(){
 }
 
 // ---- INIT ----
-loadCart();
+// Always start with an empty cart on page load so stale
+// cart items from a previous session don't confuse customers
+localStorage.removeItem('cca_cart');
+cart = [];
+renderCart();
 renderCart();
 </script>
 </body>
