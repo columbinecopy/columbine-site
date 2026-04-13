@@ -1321,24 +1321,14 @@ async function handlePayment(){
   try{
     const result=await squareCard.tokenize();
     if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64 and check total size
+    // Collect PDF files as base64 — no file size limit (files go to Google Drive)
     const pdfFiles = [];
-    let totalBase64Size = 0;
     for (const item of cart) {
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
       if (tracked && tracked.file) {
         try {
           const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          totalBase64Size += b64.length;
-          // If total payload would exceed 5MB warn and skip attachment
-          if (totalBase64Size > 5 * 1024 * 1024) {
-            console.warn('PDF too large to attach:', item.fileName);
-            status.textContent = `"${item.fileName}" is too large to send automatically. Your order will still be placed — please email the file to print@columbinecopy.com with your order number.`;
-            // Still add to pdfFiles but without data so order goes through
-            pdfFiles.push({name:tracked.name, data:null, tooLarge:true});
-          } else {
-            pdfFiles.push({name:tracked.name, data:b64});
-          }
+          pdfFiles.push({name:tracked.name, data:b64});
         } catch(e){ console.warn('Could not read:',item.fileName); }
       }
     }
@@ -1363,9 +1353,7 @@ async function handlePayment(){
     else{ status.textContent=data.error||'Payment failed.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
   }catch(err){
     console.error('Payment fetch error:', err);
-    if(err.message && err.message.includes('413')) {
-      status.textContent='Your PDF file is too large to upload. Please compress it and try again.';
-    } else if(err.message && err.message.includes('502')) {
+    if(err.message && err.message.includes('502')) {
       status.textContent='Server error — please try again in a moment.';
     } else {
       status.textContent='Network error — please check your connection and try again. If this persists please call us directly.';
