@@ -156,12 +156,29 @@ async function generateJobTicketPDF(orderId, customer, cartItems, orderNotes, to
     doc.rect(40, 40, W, 64).fill(dark);
 
     // Logo (small, top left of header)
-    try {
-      const path = require('path');
-      const logoPath = path.join(__dirname, '..', '..', 'logo.png');
-      doc.image(logoPath, 44, 46, { height: 52, fit: [52, 52] });
-    } catch(e) {
-      // fallback if logo not found
+    const path = require('path');
+    // Try multiple possible paths since Netlify Functions file structure varies
+    const logoPaths = [
+      path.join(__dirname, '..', '..', 'logo.png'),
+      path.join(__dirname, '..', 'logo.png'),
+      path.join(__dirname, 'logo.png'),
+      path.join(process.cwd(), 'logo.png'),
+      path.join(process.cwd(), 'netlify', 'functions', 'logo.png'),
+    ];
+    let logoLoaded = false;
+    for (const logoPath of logoPaths) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, 44, 46, { height: 52, fit: [52, 52] });
+          console.log('✅ Logo loaded from:', logoPath);
+          logoLoaded = true;
+          break;
+        }
+      } catch(e) { /* try next path */ }
+    }
+    if (!logoLoaded) {
+      console.log('⚠ Logo not found, using fallback. CWD:', process.cwd(), '__dirname:', __dirname);
       doc.circle(72, 72, 20).fill(purple);
       doc.fontSize(8).fillColor('white').text('CCA', 62, 68);
     }
