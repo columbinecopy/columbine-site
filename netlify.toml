@@ -1,15 +1,11 @@
 [build]
   functions = "netlify/functions"
-
 [build.environment]
   NODE_VERSION = "18"
-
 [functions]
-  included_files = ["netlify/functions/**"]
-
+  included_files = ["netlify/functions/**", "logo.png"]
 [functions."create-payment"]
   timeout = 26
-
 [[headers]]
   for = "/*"
   [headers.values]
