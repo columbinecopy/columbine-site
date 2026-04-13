@@ -1,0 +1,8 @@
+{
+  "name": "columbine-functions",
+  "version": "1.0.0",
+  "dependencies": {
+    "pdfkit": "^0.15.0",
+    "square": "^41.0.0"
+  }
+}
