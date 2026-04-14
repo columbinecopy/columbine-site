@@ -205,6 +205,23 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .submit-btn:disabled{background:#4a3a28;color:#6a5a48;cursor:not-allowed;transform:none;box-shadow:none}
 .trust-badges{display:flex;justify-content:center;gap:1rem;margin-top:.75rem;flex-wrap:wrap}
 .badge{font-size:.7rem;color:#6a5a48;display:flex;align-items:center;gap:.3rem}
+
+/* DELIVERY METHOD */
+.delivery-section{margin-bottom:1rem}
+.delivery-label{display:block;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9a8ab0;margin-bottom:.5rem}
+.delivery-options{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.delivery-card{position:relative;cursor:pointer}
+.delivery-card input{display:none}
+.delivery-card label{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.75rem .5rem;border:1.5px solid #4a2a7a;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:600;background:#2a1a4a;color:#c8b8e8;transition:all .15s;text-align:center;user-select:none}
+.delivery-card label:hover{border-color:var(--gold-light);background:#321a5a}
+.delivery-card input:checked+label{border-color:var(--gold);background:rgba(107,39,184,.25);color:var(--cream)}
+.delivery-card-icon{font-size:1.4rem}
+.delivery-card-title{font-size:.82rem;font-weight:700}
+.delivery-card-sub{font-size:.7rem;color:#9a8ab0;font-weight:400}
+.delivery-card input:checked+label .delivery-card-sub{color:#c8a0f0}
+.shipping-fields{margin-top:.85rem;animation:fadeUp .2s ease both}
+.shipping-cost-badge{display:inline-block;margin-top:.35rem;padding:.2rem .6rem;border-radius:3px;font-size:.72rem;font-weight:700;background:rgba(107,39,184,.25);color:#c8a0f0;border:1px solid #4a2a7a}
+.shipping-cost-badge.free{background:rgba(26,122,58,.25);color:#6fdc8c;border-color:#2a5a3a}
 .cart-required-note{font-size:.75rem;color:#9a8ab0;text-align:center;margin-top:.75rem;font-style:italic}
 
 /* LIGHTBOX */
@@ -550,9 +567,45 @@ footer strong{color:var(--gold)}
       <div class="checkout-field"><label>Last Name</label><input type="text" id="lastName" placeholder="Smith"></div>
       <div class="checkout-field"><label>Email Address</label><input type="email" id="email" placeholder="jane@example.com"></div>
       <div class="checkout-field"><label>Phone (optional)</label><input type="text" id="phone" placeholder="+1 (555) 000-0000"></div>
+      <!-- DELIVERY METHOD -->
+      <div class="delivery-section">
+        <span class="delivery-label">Delivery Method</span>
+        <div class="delivery-options" style="grid-template-columns:1fr">
+          <div class="delivery-card">
+            <input type="radio" name="delivery" id="deliveryPickup" value="pickup" checked onchange="updateDelivery()">
+            <label for="deliveryPickup" style="flex-direction:row;justify-content:flex-start;gap:.75rem;text-align:left">
+              <span class="delivery-card-icon">🏪</span>
+              <div>
+                <span class="delivery-card-title">Local Pickup — Free</span>
+                <div class="delivery-card-sub">Pick up at our Montrose, CO location</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- UPS Options — shown only when cart has large format -->
+        <div id="upsOptionsArea" style="display:none;margin-top:.5rem">
+          <div class="delivery-label" style="margin-top:.5rem;margin-bottom:.4rem">Shipping Options</div>
+          <div style="display:flex;flex-direction:column;gap:.4rem" id="upsOptionsList"></div>
+          <div id="shippingCostDisplay" style="display:none;margin-top:.4rem;text-align:right"></div>
+        </div>
+
+        <div id="shippingUnavailableNote" style="display:none;margin-top:.4rem;font-size:.72rem;color:#9a8ab0;font-style:italic">📦 Shipping is available for Large Format orders only</div>
+      </div>
+
+      <!-- SHIPPING ADDRESS (shown only when a UPS option is selected) -->
+      <div id="shippingFields" class="shipping-fields" style="display:none">
+        <div class="checkout-field"><label>Street Address</label><input type="text" id="shipAddress" placeholder="123 Main St"></div>
+        <div style="display:grid;grid-template-columns:1fr 80px;gap:.5rem">
+          <div class="checkout-field"><label>City</label><input type="text" id="shipCity" placeholder="City"></div>
+          <div class="checkout-field"><label>State</label><input type="text" id="shipState" placeholder="CO" maxlength="2"></div>
+        </div>
+        <div class="checkout-field"><label>ZIP Code</label><input type="text" id="shipZip" placeholder="81401" maxlength="10"></div>
+      </div>
+
       <div class="checkout-field"><label>Order Notes</label><textarea id="orderNotes" placeholder="Any overall order notes..."></textarea></div>
       <div class="checkout-total">
-        <div><div class="checkout-total-label">Order Total</div><div style="font-size:.7rem;color:#6a5a48;margin-top:.2rem">Final price confirmed at pickup</div></div>
+        <div><div class="checkout-total-label">Order Total</div><div style="font-size:.7rem;color:#6a5a48;margin-top:.2rem" id="pickupShipNote">Final price confirmed at pickup</div></div>
         <div class="checkout-total-price" id="checkoutTotalPrice">$0.00</div>
       </div>
       <div id="paymentSection" style="display:none">
@@ -586,7 +639,7 @@ footer strong{color:var(--gold)}
   <div class="modal">
     <span class="modal-icon">🎉</span>
     <h2>Order Placed!</h2>
-    <p>Thank you! We'll review your files and confirm details and pickup time.</p>
+    <p id="successDelivery">We'll review your files and confirm details and pickup time.</p>
     <div class="order-ref" id="orderRef">CCA-000000</div>
     <p style="font-size:.8rem">A confirmation will be sent to your email.</p>
     <button class="modal-close" onclick="closeModal()">Start New Order</button>
@@ -594,6 +647,55 @@ footer strong{color:var(--gold)}
 </div>
 
 <script>
+// ════════════════════════════════════════════════════════════════
+// SHIPPING OPTIONS — tiered by total large-format page count
+const SHIPPING_OPTIONS = [
+  {
+    id: 'ups_ground',
+    label: 'UPS Ground',
+    icon: '📦',
+    tiers: [
+      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 25.00 },
+      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 15.00 },
+      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 5.00 },
+    ],
+  },
+  {
+    id: 'ups_2day',
+    label: 'UPS 2nd Day Air',
+    icon: '✈️',
+    tiers: [
+      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 42.00 },
+      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 32.00 },
+      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 25.00 },
+    ],
+  },
+  {
+    id: 'ups_nextday',
+    label: 'UPS Next Day Air',
+    icon: '🚀',
+    tiers: [
+      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 53.00 },
+      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 43.00 },
+      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 38.00 },
+    ],
+  },
+];
+
+function getLargeFormatPageCount() {
+  return cart
+    .filter(item => item.format === 'large')
+    .reduce((sum, item) => sum + (item.totalPages * item.copies), 0);
+}
+
+function getShippingCost(serviceId) {
+  const service = SHIPPING_OPTIONS.find(s => s.id === serviceId);
+  if (!service) return 0;
+  const pages = getLargeFormatPageCount();
+  const tier = service.tiers.find(t => pages >= t.minPages && pages <= t.maxPages)
+    || service.tiers[service.tiers.length - 1];
+  return tier.cost;
+}
 // ════════════════════════════════════════════════════════════════
 const TAX_RATE = 0.0853; // 8.53% Montrose, CO sales tax
 const MINIMUM_ORDER = 3.00; // Minimum order amount
@@ -982,6 +1084,10 @@ document.querySelectorAll('input,select').forEach(el=>el.addEventListener('chang
 document.getElementById('firstName').addEventListener('input',updateCheckoutBtn);
 document.getElementById('lastName').addEventListener('input',updateCheckoutBtn);
 document.getElementById('email').addEventListener('input',updateCheckoutBtn);
+document.getElementById('shipAddress').addEventListener('input',updateCheckoutBtn);
+document.getElementById('shipCity').addEventListener('input',updateCheckoutBtn);
+document.getElementById('shipState').addEventListener('input',updateCheckoutBtn);
+document.getElementById('shipZip').addEventListener('input',updateCheckoutBtn);
 
 // ---- PRICING CALC ----
 function getTier(tiers, n) { for(const t of tiers){ if(n<=t.maxPages) return t; } return tiers[tiers.length-1]; }
@@ -1074,6 +1180,86 @@ function updateAddToCartBtn() {
     document.getElementById('largeTierNotice').innerHTML='<strong>'+tierLabel(PRICING.large.tiers,total)+'</strong> · Est. $'+price.toFixed(2);
   }
   if (editingIndex>=0) btn.textContent='💾 Save Changes'; else btn.textContent='🛒 Add to Cart';
+}
+
+// ---- DELIVERY METHOD ----
+function cartHasLargeFormat() {
+  return cart.some(item => item.format === 'large');
+}
+function cartHasOnlySmallFormat() {
+  return cart.length > 0 && cart.every(item => item.format === 'small');
+}
+
+function getSelectedDelivery() {
+  return document.querySelector('input[name="delivery"]:checked')?.value || 'pickup';
+}
+
+function updateDelivery() {
+  const selected = getSelectedDelivery();
+  const isShipping = selected !== 'pickup';
+  document.getElementById('shippingFields').style.display = isShipping ? '' : 'none';
+  document.getElementById('pickupShipNote').textContent = isShipping
+    ? 'Includes shipping cost + tax'
+    : 'Final price confirmed at pickup';
+  renderCart();
+  updateCheckoutBtn();
+}
+
+function buildUpsOptions() {
+  const list = document.getElementById('upsOptionsList');
+  if (!list) return;
+  const pages = getLargeFormatPageCount();
+  list.innerHTML = SHIPPING_OPTIONS.map(svc => {
+    const cost = getShippingCost(svc.id);
+    const pageLabel = pages > 0
+      ? ` · $${cost.toFixed(2)}`
+      : '';
+    return `<div class="delivery-card">
+      <input type="radio" name="delivery" id="delivery_${svc.id}" value="${svc.id}" onchange="updateDelivery()">
+      <label for="delivery_${svc.id}" style="flex-direction:row;justify-content:space-between;align-items:center;gap:.5rem;text-align:left">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <span class="delivery-card-icon" style="font-size:1.1rem">${svc.icon}</span>
+          <div>
+            <span class="delivery-card-title">${svc.label}</span>
+            <div class="delivery-card-sub">${pages > 0 ? tierLabelForService(svc, pages) : 'Rate based on page count'}</div>
+          </div>
+        </div>
+        <span style="font-family:'Oswald',sans-serif;font-size:1rem;color:#c8a0f0;white-space:nowrap">${pages > 0 ? '$'+cost.toFixed(2) : '—'}</span>
+      </label>
+    </div>`;
+  }).join('');
+}
+
+function tierLabelForService(svc, pages) {
+  const tier = svc.tiers.find(t => pages >= t.minPages && pages <= t.maxPages)
+    || svc.tiers[svc.tiers.length - 1];
+  return tier.label;
+}
+
+function refreshDeliveryAvailability() {
+  const upsArea = document.getElementById('upsOptionsArea');
+  const shipNote = document.getElementById('shippingUnavailableNote');
+  if (!upsArea) return;
+
+  buildUpsOptions();
+
+  if (cartHasOnlySmallFormat()) {
+    upsArea.style.display = 'none';
+    if (shipNote) shipNote.style.display = '';
+    // Force back to pickup
+    const pickupRadio = document.getElementById('deliveryPickup');
+    if (pickupRadio && !pickupRadio.checked) {
+      pickupRadio.checked = true;
+      updateDelivery();
+    }
+  } else if (cartHasLargeFormat()) {
+    upsArea.style.display = '';
+    if (shipNote) shipNote.style.display = 'none';
+  } else {
+    // Empty cart
+    upsArea.style.display = 'none';
+    if (shipNote) shipNote.style.display = 'none';
+  }
 }
 
 // ---- CART OPERATIONS ----
@@ -1218,23 +1404,48 @@ function renderCart() {
   }).join('');
   countEl.textContent='('+cart.length+' item'+(cart.length!==1?'s':'')+')';
   const tax = total * TAX_RATE;
-  const grandTotal = total + tax;
+  const selected = getSelectedDelivery();
+  const isShipping = selected !== 'pickup';
+  const shippingCost = isShipping ? getShippingCost(selected) : 0;
+  const grandTotal = total + tax + shippingCost;
   totalRow.style.display='';
   document.getElementById('cartTotalPrice').textContent='$'+grandTotal.toFixed(2);
   document.getElementById('checkoutTotalPrice').textContent='$'+grandTotal.toFixed(2);
-  // Update tax line if it exists
+  // Update subtotal / shipping / tax lines
   const taxEl = document.getElementById('cartTaxLine');
   if (taxEl) taxEl.textContent = 'Tax (8.53%): $'+tax.toFixed(2);
   const subtotalEl = document.getElementById('cartSubtotalLine');
   if (subtotalEl) subtotalEl.textContent = 'Subtotal: $'+total.toFixed(2);
+  // Update shipping cost display
+  const shippingDisplayEl = document.getElementById('shippingCostDisplay');
+  if (shippingDisplayEl) {
+    if (isShipping && shippingCost > 0) {
+      const svc = SHIPPING_OPTIONS.find(s => s.id === selected);
+      shippingDisplayEl.style.display = '';
+      shippingDisplayEl.innerHTML = `<span class="shipping-cost-badge">📦 ${svc?.label || 'Shipping'}: $${shippingCost.toFixed(2)}</span>`;
+    } else if (isShipping && shippingCost === 0) {
+      shippingDisplayEl.style.display = '';
+      shippingDisplayEl.innerHTML = `<span class="shipping-cost-badge free">🎉 Free Shipping!</span>`;
+    } else {
+      shippingDisplayEl.style.display = 'none';
+    }
+  }
   updateCheckoutBtn();
+  refreshDeliveryAvailability();
 }
 
 function updateCheckoutBtn() {
   const hasItems=cart.length>0;
   const hasEmail=document.getElementById('email').value.includes('@');
   const hasName=document.getElementById('firstName').value.trim().length>0;
-  document.getElementById('checkoutBtn').disabled=!(hasItems&&hasEmail&&hasName);
+  const selected = getSelectedDelivery();
+  const isShipping = selected !== 'pickup';
+  const hasShipAddr = !isShipping || (
+    document.getElementById('shipAddress').value.trim().length > 0 &&
+    document.getElementById('shipCity').value.trim().length > 0 &&
+    document.getElementById('shipZip').value.trim().length > 0
+  );
+  document.getElementById('checkoutBtn').disabled=!(hasItems&&hasEmail&&hasName&&hasShipAddr);
   document.getElementById('cartRequiredNote').style.display=hasItems?'none':'';
 }
 
@@ -1337,15 +1548,37 @@ async function handlePayment(){
       status.textContent = `A minimum order of $${MINIMUM_ORDER.toFixed(2)} is required. Your current subtotal is $${total.toFixed(2)} — please add more items to your cart.`;
       btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return;
     }
+    const selected = getSelectedDelivery();
+    const isShipping = selected !== 'pickup';
+    const shippingCost = isShipping ? getShippingCost(selected) : 0;
+    const selectedService = isShipping ? SHIPPING_OPTIONS.find(s => s.id === selected) : null;
+    const shippingAddress = isShipping ? {
+      address: document.getElementById('shipAddress').value,
+      city: document.getElementById('shipCity').value,
+      state: document.getElementById('shipState').value,
+      zip: document.getElementById('shipZip').value,
+    } : null;
     const tax = total * TAX_RATE;
-    const chargeTotal = total + tax;
+    const chargeTotal = total + tax + shippingCost;
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
       customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
       cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
+      delivery: isShipping ? selected : 'pickup',
+      deliveryLabel: isShipping ? (selectedService?.label || selected) : 'Local Pickup',
+      shippingCost, shippingAddress,
     })});
     const data=await response.json();
-    if(data.success){ document.getElementById('orderRef').textContent=data.orderId||('CCA-'+Math.floor(100000+Math.random()*900000)); document.getElementById('successModal').classList.add('visible'); }
+    if(data.success){
+      const sel = getSelectedDelivery();
+      const isShip = sel !== 'pickup';
+      const svc = SHIPPING_OPTIONS.find(s => s.id === sel);
+      document.getElementById('orderRef').textContent=data.orderId||('CCA-'+Math.floor(100000+Math.random()*900000));
+      document.getElementById('successDelivery').textContent = isShip
+        ? `📦 Your order will be shipped via ${svc?.label || 'UPS'} to the address you provided.`
+        : '🏪 Your order will be ready for pickup at our Montrose, CO location.';
+      document.getElementById('successModal').classList.add('visible');
+    }
     else{ status.textContent=data.error||'Payment failed.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
   }catch(err){
     console.error('Payment fetch error:', err);
@@ -1371,7 +1604,10 @@ function closeModal(){
   document.getElementById('paymentSection').style.display='none';
   document.getElementById('checkoutBtn').style.display='';
   squareCard=null;
-  ['firstName','lastName','email','phone','orderNotes'].forEach(id=>document.getElementById(id).value='');
+  ['firstName','lastName','email','phone','orderNotes','shipAddress','shipCity','shipState','shipZip'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('deliveryPickup').checked = true;
+  document.getElementById('shippingFields').style.display = 'none';
+  document.getElementById('shippingCostDisplay').style.display = 'none';
   resetForm();
 }
 
