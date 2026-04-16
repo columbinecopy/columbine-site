@@ -1577,6 +1577,7 @@ async function handlePayment(){
     }
 
     // Step 3: Process payment
+    console.log('Drive upload complete. driveFileIds:', JSON.stringify(driveFileIds));
     btn.textContent='⏳ Processing payment…';
     const total=cart.reduce((s,i)=>s+i.price,0);
     if (!total || total <= 0) {
@@ -1599,6 +1600,7 @@ async function handlePayment(){
     } : null;
     const tax = total * TAX_RATE;
     const chargeTotal = total + tax + shippingCost;
+    console.log('driveFileIds being sent:', JSON.stringify(driveFileIds));
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
       customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
