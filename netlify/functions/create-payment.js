@@ -433,11 +433,16 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
-  // ── 2. Upload files to Google Drive ──────────────────────────────────────
+  // ── 2. Get Google Drive file links (files already uploaded directly by browser) ──
+  // Files are uploaded directly from the browser to Google Drive using
+  // a resumable upload URL from get-upload-url function. We just need
+  // to make the files publicly readable and get the view links.
   const driveLinks = [];
   let googleAccessToken = null;
 
-  if (pdfFiles && pdfFiles.length > 0) {
+  const driveFileIds = body.driveFileIds || []; // [{id, name, webViewLink}] from browser
+
+  if (driveFileIds.length > 0) {
     try {
       googleAccessToken = await getGoogleAccessToken();
       console.log('✅ Google auth successful');
@@ -446,18 +451,36 @@ exports.handler = async function(event) {
     }
   }
 
-  for (let i = 0; i < (pdfFiles || []).length; i++) {
-    const f = pdfFiles[i];
-    if (!f || !f.data) { driveLinks.push(null); continue; }
-    try {
-      const clean = f.data.replace(/^data:[^;]+;base64,/, '');
-      const driveName = `${orderId}_Item${i + 1}_${f.name || 'file.pdf'}`;
-      const result = await uploadToGoogleDrive(googleAccessToken, driveName, clean);
-      driveLinks.push(result);
-      console.log(`✅ Uploaded to Drive: ${driveName} — ${result.webViewLink}`);
-    } catch(e) {
-      console.error(`Drive upload failed for item ${i + 1}:`, e.message);
+  for (let i = 0; i < (cartItems || []).length; i++) {
+    const driveFile = driveFileIds[i];
+    if (!driveFile || !driveFile.id) {
       driveLinks.push(null);
+      continue;
+    }
+    try {
+      // Make file readable by anyone with the link
+      if (googleAccessToken) {
+        const permPayload = JSON.stringify({ role: 'reader', type: 'anyone' });
+        await httpsRequest({
+          hostname: 'www.googleapis.com',
+          path: `/drive/v3/files/${driveFile.id}/permissions?supportsAllDrives=true`,
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(permPayload),
+          },
+        }, permPayload);
+      }
+      driveLinks.push({
+        id: driveFile.id,
+        name: driveFile.name,
+        webViewLink: driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`,
+      });
+      console.log(`✅ Drive file ready: ${driveFile.name}`);
+    } catch(e) {
+      console.error(`Drive permission failed for item ${i + 1}:`, e.message);
+      driveLinks.push({ id: driveFile.id, name: driveFile.name, webViewLink: `https://drive.google.com/file/d/${driveFile.id}/view` });
     }
   }
 
