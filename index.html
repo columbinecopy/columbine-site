@@ -1524,21 +1524,60 @@ async function initSquare(){
 async function handlePayment(){
   const btn=document.getElementById('card-button');
   const status=document.getElementById('payment-status');
-  btn.disabled=true; btn.textContent='⏳ Processing…'; status.textContent='';
+  btn.disabled=true; status.textContent='';
+
   try{
+    // Step 1: Tokenize card
+    btn.textContent='⏳ Verifying card…';
     const result=await squareCard.tokenize();
     if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64 — no file size limit (files go to Google Drive)
-    const pdfFiles = [];
-    for (const item of cart) {
+
+    // Step 2: Upload files directly to Google Drive (bypasses Netlify size limit)
+    btn.textContent='⏳ Uploading your files…';
+    const driveFileIds = [];
+    const tempOrderId = 'CCA-' + Math.floor(100000 + Math.random() * 900000);
+
+    for (let i = 0; i < cart.length; i++) {
+      const item = cart[i];
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
-      if (tracked && tracked.file) {
-        try {
-          const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          pdfFiles.push({name:tracked.name, data:b64});
-        } catch(e){ console.warn('Could not read:',item.fileName); }
+      if (!tracked || !tracked.file) { driveFileIds.push(null); continue; }
+      try {
+        // Get a secure upload URL from our Netlify function
+        const urlResp = await fetch('/.netlify/functions/get-upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: `${tempOrderId}_Item${i+1}_${tracked.name}`,
+            mimeType: tracked.file.type || 'application/pdf',
+            orderId: tempOrderId,
+          }),
+        });
+        const urlData = await urlResp.json();
+        if (!urlData.uploadUrl) throw new Error('Could not get upload URL');
+
+        // Upload file directly to Google Drive using the resumable URL
+        const uploadResp = await fetch(urlData.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': tracked.file.type || 'application/pdf' },
+          body: tracked.file,
+        });
+
+        if (!uploadResp.ok) throw new Error('Upload failed: ' + uploadResp.status);
+        const driveFile = await uploadResp.json();
+        driveFileIds.push({
+          id: driveFile.id,
+          name: urlData.fileName,
+          webViewLink: `https://drive.google.com/file/d/${driveFile.id}/view`,
+        });
+        console.log('✅ Uploaded to Drive:', driveFile.id);
+      } catch(e) {
+        console.warn('Drive upload failed for item', i+1, e.message);
+        driveFileIds.push(null);
       }
     }
+
+    // Step 3: Process payment
+    btn.textContent='⏳ Processing payment…';
     const total=cart.reduce((s,i)=>s+i.price,0);
     if (!total || total <= 0) {
       status.textContent = 'Cart total is $0 — please add items to your cart first.';
@@ -1563,7 +1602,8 @@ async function handlePayment(){
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
       customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
-      cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
+      cartItems:cart, orderNotes:document.getElementById('orderNotes').value,
+      driveFileIds, // files already uploaded directly to Google Drive
       delivery: isShipping ? selected : 'pickup',
       deliveryLabel: isShipping ? (selectedService?.label || selected) : 'Local Pickup',
       shippingCost, shippingAddress,
@@ -1581,11 +1621,13 @@ async function handlePayment(){
     }
     else{ status.textContent=data.error||'Payment failed.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; }
   }catch(err){
-    console.error('Payment fetch error:', err);
-    if(err.message && err.message.includes('502')) {
+    console.error('Payment error:', err);
+    if(err.message && err.message.includes('upload')) {
+      status.textContent='File upload failed — please check your connection and try again. If this persists please call us at (970) 249-4418.';
+    } else if(err.message && err.message.includes('502')) {
       status.textContent='Server error — please try again in a moment.';
     } else {
-      status.textContent='Network error — please check your connection and try again. If this persists please call us directly.';
+      status.textContent='Something went wrong — please try again. If this persists please call us at (970) 249-4418.';
     }
     btn.disabled=false; btn.textContent='🔒 Pay & Place Order';
   }
