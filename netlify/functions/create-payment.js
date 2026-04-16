@@ -440,9 +440,9 @@ exports.handler = async function(event) {
   const driveLinks = [];
   let googleAccessToken = null;
 
-  const driveFileIds = body.driveFileIds || []; // [{id, name, webViewLink}] from browser
+  const driveFileIds2 = driveFileIds || []; // [{id, name, webViewLink}] from browser
 
-  if (driveFileIds.length > 0) {
+  if (driveFileIds2.length > 0) {
     try {
       googleAccessToken = await getGoogleAccessToken();
       console.log('✅ Google auth successful');
@@ -452,7 +452,7 @@ exports.handler = async function(event) {
   }
 
   for (let i = 0; i < (cartItems || []).length; i++) {
-    const driveFile = driveFileIds[i];
+    const driveFile = driveFileIds2[i];
     if (!driveFile || !driveFile.id) {
       driveLinks.push(null);
       continue;
