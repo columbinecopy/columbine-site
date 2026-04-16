@@ -386,9 +386,9 @@ exports.handler = async function(event) {
   try { body = JSON.parse(event.body); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) }; }
 
-  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles } = body;
+  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, driveFileIds } = body;
 
-  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0);
+  console.log('Payment request — amountCents:', amountCents, 'driveFiles:', driveFileIds?.length || 0);
 
   if (!sourceId) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
