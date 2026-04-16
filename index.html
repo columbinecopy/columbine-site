@@ -1547,7 +1547,7 @@ async function handlePayment(){
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: `${tempOrderId}_Item${i+1}_${tracked.name}`,
+            fileName: `Item${i+1}_${tracked.name}`,
             mimeType: tracked.file.type || 'application/pdf',
             orderId: tempOrderId,
           }),
