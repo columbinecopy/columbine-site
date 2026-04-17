@@ -419,15 +419,13 @@ exports.handler = async function(event) {
   // Pad to match cartItems length
   while (dropboxLinks.length < (cartItems || []).length) dropboxLinks.push(null);
 
-  const uploadedCount = dropboxLinks.filter(Boolean).length;
-  console.log(`✅ Bytescale files received: ${uploadedCount}`);
-
   // ── 3. Build owner email ──────────────────────────────────────────────────
   const cartHtml = (cartItems || []).map((item, i) =>
     formatCartItemEmail(item, i, dropboxLinks[i])
   ).join('');
 
   const uploadedCount = dropboxLinks.filter(Boolean).length;
+  console.log(`✅ Bytescale files received: ${uploadedCount}`);
   const fileStatusHtml = uploadedCount > 0
     ? `<p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
         📁 ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded via Bytescale — download links included below
