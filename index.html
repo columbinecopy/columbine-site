@@ -7,6 +7,7 @@
 <title>Columbine Copy &amp; Apparel — Print Order</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://web.squarecdn.com/v1/square.js"></script>
+<script src="https://js.bytescale.com/sdk/v3"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
@@ -1495,6 +1496,8 @@ function resetForm() {
 const SQUARE_APP_ID      = 'sq0idp-R9VagBVL9Jyqnvgs60MzVQ';
 const SQUARE_LOCATION_ID = 'LYFKKSNCMBCVD';
 const BACKEND_URL        = 'https://columbine-site-production.up.railway.app/api/create-payment';
+// Bytescale public key — safe to expose in frontend code
+window.BYTESCALE_PUBLIC_KEY = 'public_223k2d7CmaJGWtfXLMAi16UANnhY';
 let squareCard=null;
 
 async function initSquare(){
@@ -1524,19 +1527,38 @@ async function initSquare(){
 async function handlePayment(){
   const btn=document.getElementById('card-button');
   const status=document.getElementById('payment-status');
-  btn.disabled=true; btn.textContent='⏳ Processing…'; status.textContent='';
+  btn.disabled=true; status.textContent='';
+
   try{
+    // Step 1: Tokenize card
+    btn.textContent='⏳ Verifying card…';
     const result=await squareCard.tokenize();
     if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64 — no file size limit (files go to Google Drive)
-    const pdfFiles = [];
+
+    // Step 2: Upload files directly to Bytescale (no server involved, no size limits)
+    btn.textContent='⏳ Uploading your files…';
+    const bytescaleFiles = [];
+
     for (const item of cart) {
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
-      if (tracked && tracked.file) {
-        try {
-          const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          pdfFiles.push({name:tracked.name, data:b64});
-        } catch(e){ console.warn('Could not read:',item.fileName); }
+      if (!tracked || !tracked.file) { bytescaleFiles.push(null); continue; }
+      try {
+        // Upload directly from browser to Bytescale
+        const uploadManager = new Bytescale.UploadManager({ apiKey: window.BYTESCALE_PUBLIC_KEY });
+        const { fileUrl, filePath } = await uploadManager.upload({
+          data: tracked.file,
+          mime: tracked.file.type || 'application/pdf',
+          originalFileName: tracked.name,
+          onProgress: ({ bytesSent, bytesTotal }) => {
+            const pct = Math.round(bytesSent / bytesTotal * 100);
+            btn.textContent = `⏳ Uploading… ${pct}%`;
+          },
+        });
+        bytescaleFiles.push({ name: tracked.name, fileUrl, filePath });
+        console.log('✅ Uploaded to Bytescale:', fileUrl);
+      } catch(e) {
+        console.warn('Bytescale upload failed for:', item.fileName, e.message);
+        bytescaleFiles.push(null);
       }
     }
     const total=cart.reduce((s,i)=>s+i.price,0);
@@ -1563,7 +1585,7 @@ async function handlePayment(){
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
       customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
-      cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
+      cartItems:cart, orderNotes:document.getElementById('orderNotes').value, bytescaleFiles,
       delivery: isShipping ? selected : 'pickup',
       deliveryLabel: isShipping ? (selectedService?.label || selected) : 'Local Pickup',
       shippingCost, shippingAddress,
