@@ -306,7 +306,7 @@ function formatCartItemEmail(item, index, dropboxLink) {
     item.notes ? `<b>Notes:</b> ${item.notes}` : '',
     `<b>Item Total:</b> $${Number(item.price || 0).toFixed(2)}`,
     dropboxLink
-      ? `<b>📁 Print File:</b> <a href="${dropboxLink.shareUrl}" style="color:#6b27b8">Download from Dropbox →</a>`
+      ? `<b>📁 Print File:</b> <a href="${dropboxLink.shareUrl}" style="color:#6b27b8">Download Print File →</a>`
       : `<b style="color:#cc0000">⚠ No file uploaded for this item</b>`,
   ].filter(Boolean);
 
@@ -356,10 +356,10 @@ exports.handler = async function(event) {
   try { body = JSON.parse(event.body); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) }; }
 
-  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles,
+  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, bytescaleFiles,
           delivery, deliveryLabel, shippingCost, shippingAddress } = body;
 
-  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0);
+  console.log('Payment request — amountCents:', amountCents, 'files:', bytescaleFiles?.length || 0);
 
   if (!sourceId) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
@@ -404,25 +404,23 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
-  // ── 2. Upload files to Dropbox ────────────────────────────────────────────
-  const dropboxLinks = [];
+  // ── 2. Map Bytescale file URLs (files already uploaded directly from browser) ──
+  // Files were uploaded directly from the customer's browser to Bytescale.
+  // We just map the URLs here — no file processing needed on the server!
+  const dropboxLinks = (bytescaleFiles || []).map(f => {
+    if (!f || !f.fileUrl) return null;
+    return {
+      name: f.name,
+      shareUrl: f.fileUrl,
+      path: f.filePath || f.name,
+    };
+  });
 
-  for (let i = 0; i < (pdfFiles || []).length; i++) {
-    const f = pdfFiles[i];
-    if (!f || !f.data) { dropboxLinks.push(null); continue; }
-    try {
-      const clean = f.data.replace(/^data:[^;]+;base64,/, '');
-      const result = await uploadToDropbox(f.name || `file_${i+1}.pdf`, clean, orderId);
-      dropboxLinks.push(result);
-      console.log(`✅ Dropbox upload: ${result.name}`);
-    } catch(e) {
-      console.error(`Dropbox upload failed for item ${i + 1}:`, e.message);
-      dropboxLinks.push(null);
-    }
-  }
-
-  // Pad dropboxLinks to match cartItems length
+  // Pad to match cartItems length
   while (dropboxLinks.length < (cartItems || []).length) dropboxLinks.push(null);
+
+  const uploadedCount = dropboxLinks.filter(Boolean).length;
+  console.log(`✅ Bytescale files received: ${uploadedCount}`);
 
   // ── 3. Build owner email ──────────────────────────────────────────────────
   const cartHtml = (cartItems || []).map((item, i) =>
@@ -432,7 +430,7 @@ exports.handler = async function(event) {
   const uploadedCount = dropboxLinks.filter(Boolean).length;
   const fileStatusHtml = uploadedCount > 0
     ? `<p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
-        📁 ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded to Dropbox — download links included below
+        📁 ${uploadedCount} file${uploadedCount > 1 ? 's' : ''} uploaded via Bytescale — download links included below
        </p>`
     : `<p style="background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:12px;color:#e65100;font-size:.88rem">
         ⚠ No files were uploaded — customer may need to resend
