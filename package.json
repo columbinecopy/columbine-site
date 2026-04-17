@@ -1,9 +1,17 @@
 {
   "name": "columbine-print-backend",
   "version": "1.0.0",
-  "description": "Netlify Functions backend for Columbine Copy & Apparel",
+  "description": "Columbine Copy & Apparel print store backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
+    "express": "^4.18.2",
     "square": "^37.0.0",
     "pdfkit": "^0.15.0"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
