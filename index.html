@@ -724,36 +724,30 @@ footer strong{color:var(--gold)}
 <script>
 // ════════════════════════════════════════════════════════════════
 // SHIPPING OPTIONS — tiered by total large-format page count
+// Sizes that are too large for USPS Priority Mail (Arch E & E1)
+const LARGE_ONLY_SIZES = ['arch-e', 'arch-e1'];
+
 const SHIPPING_OPTIONS = [
   {
-    id: 'ups_ground',
-    label: 'UPS Ground',
-    icon: '📦',
-    tiers: [
-      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 25.00 },
-      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 15.00 },
-      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 5.00 },
-    ],
+    id: 'usps_priority',
+    label: 'USPS Priority Mail',
+    icon: '📬',
+    upsOnly: false, // not available for Arch E & E1
+    cost: 22.00,
   },
   {
     id: 'ups_2day',
     label: 'UPS 2nd Day Air',
     icon: '✈️',
-    tiers: [
-      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 42.00 },
-      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 32.00 },
-      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 25.00 },
-    ],
+    upsOnly: true,
+    cost: 38.00,
   },
   {
     id: 'ups_nextday',
     label: 'UPS Next Day Air',
     icon: '🚀',
-    tiers: [
-      { label: '1–49 pages',  minPages:   1, maxPages:  49, cost: 53.00 },
-      { label: '50–99 pages', minPages:  50, maxPages:  99, cost: 43.00 },
-      { label: '100+ pages',  minPages: 100, maxPages: Infinity, cost: 38.00 },
-    ],
+    upsOnly: true,
+    cost: 48.00,
   },
 ];
 
@@ -766,10 +760,19 @@ function getLargeFormatPageCount() {
 function getShippingCost(serviceId) {
   const service = SHIPPING_OPTIONS.find(s => s.id === serviceId);
   if (!service) return 0;
-  const pages = getLargeFormatPageCount();
-  const tier = service.tiers.find(t => pages >= t.minPages && pages <= t.maxPages)
-    || service.tiers[service.tiers.length - 1];
-  return tier.cost;
+  return service.cost;
+}
+
+function cartHasLargeOnlySize() {
+  return cart.some(item => item.format === 'large' && LARGE_ONLY_SIZES.includes(item.paperSize));
+}
+
+function getAvailableShippingOptions() {
+  if (cartHasLargeOnlySize()) {
+    // Arch E & E1 — UPS only, no USPS
+    return SHIPPING_OPTIONS.filter(s => s.upsOnly);
+  }
+  return SHIPPING_OPTIONS;
 }
 // ════════════════════════════════════════════════════════════════
 const TAX_RATE = 0.0853; // 8.53% Montrose, CO sales tax
@@ -1283,12 +1286,9 @@ function updateDelivery() {
 function buildUpsOptions() {
   const list = document.getElementById('upsOptionsList');
   if (!list) return;
-  const pages = getLargeFormatPageCount();
-  list.innerHTML = SHIPPING_OPTIONS.map(svc => {
-    const cost = getShippingCost(svc.id);
-    const pageLabel = pages > 0
-      ? ` · $${cost.toFixed(2)}`
-      : '';
+  const available = getAvailableShippingOptions();
+  list.innerHTML = available.map(svc => {
+    const cost = svc.cost;
     return `<div class="delivery-card">
       <input type="radio" name="delivery" id="delivery_${svc.id}" value="${svc.id}" onchange="updateDelivery()">
       <label for="delivery_${svc.id}" style="flex-direction:row;justify-content:space-between;align-items:center;gap:.5rem;text-align:left">
@@ -1296,19 +1296,13 @@ function buildUpsOptions() {
           <span class="delivery-card-icon" style="font-size:1.1rem">${svc.icon}</span>
           <div>
             <span class="delivery-card-title">${svc.label}</span>
-            <div class="delivery-card-sub">${pages > 0 ? tierLabelForService(svc, pages) : 'Rate based on page count'}</div>
+            <div class="delivery-card-sub">Flat rate shipping</div>
           </div>
         </div>
-        <span style="font-family:'Oswald',sans-serif;font-size:1rem;color:#c8a0f0;white-space:nowrap">${pages > 0 ? '$'+cost.toFixed(2) : '—'}</span>
+        <span style="font-family:'Oswald',sans-serif;font-size:1rem;color:#c8a0f0;white-space:nowrap">$${cost.toFixed(2)}</span>
       </label>
     </div>`;
   }).join('');
-}
-
-function tierLabelForService(svc, pages) {
-  const tier = svc.tiers.find(t => pages >= t.minPages && pages <= t.maxPages)
-    || svc.tiers[svc.tiers.length - 1];
-  return tier.label;
 }
 
 function refreshDeliveryAvailability() {
@@ -1330,6 +1324,12 @@ function refreshDeliveryAvailability() {
   } else if (cartHasLargeFormat()) {
     upsArea.style.display = '';
     if (shipNote) shipNote.style.display = 'none';
+    // If USPS was selected but cart now has Arch E/E1, reset to pickup
+    const selected = getSelectedDelivery();
+    if (selected === 'usps_priority' && cartHasLargeOnlySize()) {
+      document.getElementById('deliveryPickup').checked = true;
+      updateDelivery();
+    }
   } else {
     // Empty cart
     upsArea.style.display = 'none';
