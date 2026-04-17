@@ -251,25 +251,25 @@ footer{background:var(--ink);color:#5a4a38;text-align:center;padding:2rem;font-s
 footer strong{color:var(--gold)}
 
 /* WELCOME POPUP */
-.welcome-overlay{position:fixed;inset:0;background:rgba(26,10,46,.88);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem;opacity:0;pointer-events:none;transition:opacity .35s}
+.welcome-overlay{position:fixed;inset:0;background:rgba(26,10,46,.88);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .35s}
 .welcome-overlay.visible{opacity:1;pointer-events:all}
-.welcome-modal{background:var(--paper);border-radius:8px;max-width:520px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);transform:translateY(24px) scale(.97);transition:transform .35s}
+.welcome-modal{background:var(--paper);border-radius:8px;max-width:500px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);transform:translateY(24px) scale(.97);transition:transform .35s;margin:auto}
 .welcome-overlay.visible .welcome-modal{transform:translateY(0) scale(1)}
-.welcome-header{background:var(--ink);padding:1.75rem 2rem 1.5rem;text-align:center;border-bottom:3px solid var(--gold)}
-.welcome-header h2{font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:900;color:var(--cream);margin-bottom:.35rem}
-.welcome-header p{font-size:.82rem;color:#9a8ab0;letter-spacing:1.5px;text-transform:uppercase}
-.welcome-body{padding:1.75rem 2rem}
-.welcome-steps{display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem}
-.welcome-step{display:flex;align-items:flex-start;gap:.85rem}
-.welcome-step-num{width:32px;height:32px;border-radius:50%;background:var(--gold);color:white;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem}
+.welcome-header{background:var(--ink);padding:1.25rem 1.5rem 1rem;text-align:center;border-bottom:3px solid var(--gold)}
+.welcome-header h2{font-family:'Oswald',sans-serif;font-size:1.35rem;font-weight:900;color:var(--cream);margin-bottom:.2rem}
+.welcome-header p{font-size:.78rem;color:#9a8ab0;letter-spacing:1.5px;text-transform:uppercase}
+.welcome-body{padding:1.25rem 1.5rem}
+.welcome-steps{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem}
+.welcome-step{display:flex;align-items:flex-start;gap:.75rem}
+.welcome-step-num{width:28px;height:28px;border-radius:50%;background:var(--gold);color:white;font-family:'Oswald',sans-serif;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem}
 .welcome-step-text{flex:1}
-.welcome-step-title{font-family:'Oswald',sans-serif;font-size:.95rem;font-weight:700;color:var(--ink);margin-bottom:.2rem}
-.welcome-step-desc{font-size:.82rem;color:var(--mid);line-height:1.5}
-.welcome-note{background:var(--warm);border:1px solid var(--border);border-radius:4px;padding:.75rem 1rem;font-size:.78rem;color:var(--mid);line-height:1.55;margin-bottom:1.5rem}
+.welcome-step-title{font-family:'Oswald',sans-serif;font-size:.88rem;font-weight:700;color:var(--ink);margin-bottom:.15rem}
+.welcome-step-desc{font-size:.78rem;color:var(--mid);line-height:1.45}
+.welcome-note{background:var(--warm);border:1px solid var(--border);border-radius:4px;padding:.6rem .85rem;font-size:.75rem;color:var(--mid);line-height:1.55;margin-bottom:1rem}
 .welcome-note strong{color:var(--gold)}
-.welcome-btn{width:100%;padding:.9rem;background:var(--gold);color:white;border:none;border-radius:4px;font-family:'Open Sans',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.welcome-btn{width:100%;padding:.8rem;background:var(--gold);color:white;border:none;border-radius:4px;font-family:'Open Sans',sans-serif;font-size:.88rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .2s}
 .welcome-btn:hover{background:var(--gold-light)}
-.welcome-dont-show{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:.75rem;font-size:.75rem;color:var(--mid);cursor:pointer;user-select:none}
+.welcome-dont-show{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:.65rem;font-size:.75rem;color:var(--mid);cursor:pointer;user-select:none}
 .welcome-dont-show input{cursor:pointer}
 </style>
 </head>
