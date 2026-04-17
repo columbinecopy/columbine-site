@@ -249,6 +249,28 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 .modal-close:hover{background:var(--gold);color:var(--cream)}
 footer{background:var(--ink);color:#5a4a38;text-align:center;padding:2rem;font-size:.8rem;border-top:3px solid var(--gold)}
 footer strong{color:var(--gold)}
+
+/* WELCOME POPUP */
+.welcome-overlay{position:fixed;inset:0;background:rgba(26,10,46,.88);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem;opacity:0;pointer-events:none;transition:opacity .35s}
+.welcome-overlay.visible{opacity:1;pointer-events:all}
+.welcome-modal{background:var(--paper);border-radius:8px;max-width:520px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);transform:translateY(24px) scale(.97);transition:transform .35s}
+.welcome-overlay.visible .welcome-modal{transform:translateY(0) scale(1)}
+.welcome-header{background:var(--ink);padding:1.75rem 2rem 1.5rem;text-align:center;border-bottom:3px solid var(--gold)}
+.welcome-header h2{font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:900;color:var(--cream);margin-bottom:.35rem}
+.welcome-header p{font-size:.82rem;color:#9a8ab0;letter-spacing:1.5px;text-transform:uppercase}
+.welcome-body{padding:1.75rem 2rem}
+.welcome-steps{display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem}
+.welcome-step{display:flex;align-items:flex-start;gap:.85rem}
+.welcome-step-num{width:32px;height:32px;border-radius:50%;background:var(--gold);color:white;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem}
+.welcome-step-text{flex:1}
+.welcome-step-title{font-family:'Oswald',sans-serif;font-size:.95rem;font-weight:700;color:var(--ink);margin-bottom:.2rem}
+.welcome-step-desc{font-size:.82rem;color:var(--mid);line-height:1.5}
+.welcome-note{background:var(--warm);border:1px solid var(--border);border-radius:4px;padding:.75rem 1rem;font-size:.78rem;color:var(--mid);line-height:1.55;margin-bottom:1.5rem}
+.welcome-note strong{color:var(--gold)}
+.welcome-btn{width:100%;padding:.9rem;background:var(--gold);color:white;border:none;border-radius:4px;font-family:'Open Sans',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.welcome-btn:hover{background:var(--gold-light)}
+.welcome-dont-show{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-top:.75rem;font-size:.75rem;color:var(--mid);cursor:pointer;user-select:none}
+.welcome-dont-show input{cursor:pointer}
 </style>
 </head>
 <body>
@@ -625,6 +647,58 @@ footer strong{color:var(--gold)}
 </div><!-- /mainForm -->
 
 <footer>&copy; 2025 <strong>Columbine Copy &amp; Apparel</strong> · All files are kept confidential and deleted after printing</footer>
+
+<!-- WELCOME POPUP -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-modal">
+    <div class="welcome-header">
+      <h2>Welcome to Online Print Ordering!</h2>
+      <p>Here's how it works — it's easy!</p>
+    </div>
+    <div class="welcome-body">
+      <div class="welcome-steps">
+        <div class="welcome-step">
+          <div class="welcome-step-num">1</div>
+          <div class="welcome-step-text">
+            <div class="welcome-step-title">Choose Your Format</div>
+            <div class="welcome-step-desc">Select Small Format (documents, flyers) or Large Format (blueprints, plans, posters) to get started.</div>
+          </div>
+        </div>
+        <div class="welcome-step">
+          <div class="welcome-step-num">2</div>
+          <div class="welcome-step-text">
+            <div class="welcome-step-title">Upload One File at a Time</div>
+            <div class="welcome-step-desc">Drag and drop your PDF or click to browse. Upload <strong>one file at a time</strong> — any file size is supported! The site will automatically detect your paper size and page count.</div>
+          </div>
+        </div>
+        <div class="welcome-step">
+          <div class="welcome-step-num">3</div>
+          <div class="welcome-step-text">
+            <div class="welcome-step-title">Set Your Print Options &amp; Add to Cart</div>
+            <div class="welcome-step-desc">Choose color mode, paper size, copies, binding, and finishing options — then click <strong>Add to Cart</strong>. Repeat steps 2 &amp; 3 for each additional file before checking out.</div>
+          </div>
+        </div>
+        <div class="welcome-step">
+          <div class="welcome-step-num">4</div>
+          <div class="welcome-step-text">
+            <div class="welcome-step-title">Review Your Cart &amp; Checkout</div>
+            <div class="welcome-step-desc">Need to make a change? Click <strong>Edit</strong> on any cart item to update its options. When everything looks good, enter your info and pay securely. You'll receive a confirmation email!</div>
+          </div>
+        </div>
+      </div>
+      <div class="welcome-note">
+        📍 <strong>Local Pickup:</strong> Orders are typically ready within 30–60 minutes during business hours.<br>
+        🕓 <strong>After Hours:</strong> Files uploaded after 4:00 PM will be available for pickup the following business day.<br>
+        📞 <strong>Questions?</strong> Call us at (970) 249-4418 or email print@columbinecopy.com
+      </div>
+      <button class="welcome-btn" onclick="closeWelcome()">Got it — Let's Get Started! →</button>
+      <div class="welcome-dont-show">
+        <input type="checkbox" id="dontShowAgain" onchange="toggleDontShow(this)">
+        <label for="dontShowAgain">Don't show this again</label>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox">
@@ -1497,7 +1571,7 @@ const SQUARE_APP_ID      = 'sq0idp-R9VagBVL9Jyqnvgs60MzVQ';
 const SQUARE_LOCATION_ID = 'LYFKKSNCMBCVD';
 const BACKEND_URL        = 'https://columbine-site-production.up.railway.app/api/create-payment';
 // Bytescale public key — safe to expose in frontend code
-window.BYTESCALE_PUBLIC_KEY = 'public_223k2d7CmaJGWtfXLMAi16UANnhY';
+window.BYTESCALE_PUBLIC_KEY = 'REPLACE_WITH_YOUR_PUBLIC_KEY';
 let squareCard=null;
 
 async function initSquare(){
@@ -1632,6 +1706,21 @@ function closeModal(){
   document.getElementById('shippingCostDisplay').style.display = 'none';
   resetForm();
 }
+
+// ---- WELCOME POPUP ----
+function showWelcome() {
+  if (localStorage.getItem('cca_welcome_seen') === 'true') return;
+  document.getElementById('welcomeOverlay').classList.add('visible');
+}
+function closeWelcome() {
+  document.getElementById('welcomeOverlay').classList.remove('visible');
+}
+function toggleDontShow(cb) {
+  if (cb.checked) localStorage.setItem('cca_welcome_seen', 'true');
+  else localStorage.removeItem('cca_welcome_seen');
+}
+// Show on load with slight delay for smooth appearance
+setTimeout(showWelcome, 600);
 
 // ---- INIT ----
 // Always start with an empty cart on page load so stale
