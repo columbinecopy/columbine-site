@@ -27,14 +27,16 @@ function httpsRequest(options, body) {
 }
 
 // ── Send email via Resend (with optional PDF attachments) ─────────────────────
-async function sendEmail(to, subject, html, attachments = []) {
-  const payload = JSON.stringify({
+async function sendEmail(to, subject, html, attachments = [], replyTo = null) {
+  const emailData = {
     from: `Columbine Copy & Apparel <${process.env.OWNER_EMAIL}>`,
     to: [to],
     subject,
     html,
-    attachments, // [{ filename, content (base64) }]
-  });
+    attachments,
+  };
+  if (replyTo) emailData.reply_to = replyTo;
+  const payload = JSON.stringify(emailData);
 
   const result = await httpsRequest({
     hostname: 'api.resend.com',
@@ -88,9 +90,9 @@ function formatCartItem(item, index) {
   ].filter(Boolean);
 
   return `
-    <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:16px 20px;margin-bottom:14px">
-      <div style="font-weight:700;color:#1a0a2e;font-size:1rem;margin-bottom:10px;border-bottom:1px solid #d4c8e8;padding-bottom:6px">Item ${index + 1}</div>
-      ${lines.map(l => `<div style="font-size:0.95rem;color:#333;margin-bottom:6px;line-height:1.4">${l}</div>`).join('')}
+    <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-weight:700;color:#1a0a2e;font-size:.9rem;margin-bottom:8px;border-bottom:1px solid #d4c8e8;padding-bottom:5px">Item ${index + 1}</div>
+      ${lines.map(l => `<div style="font-size:0.82rem;color:#333;margin-bottom:4px;line-height:1.3">${l}</div>`).join('')}
     </div>`;
 }
 
@@ -169,7 +171,37 @@ exports.handler = async function(event) {
     }
   }
 
-  const cartHtml = (cartItems || []).map((item, i) => formatCartItem(item, i)).join('');
+  // Build cart HTML in two-column grid layout
+  // Page 1: customer info + 4 items (2 columns x 2 rows)
+  // Page 2+: 6 items per page (2 columns x 3 rows)
+  const items = cartItems || [];
+  
+  const buildGrid = (itemsSlice, startIndex) => {
+    const rows = [];
+    for (let i = 0; i < itemsSlice.length; i += 2) {
+      const left = itemsSlice[i] ? formatCartItem(itemsSlice[i], startIndex + i) : '';
+      const right = itemsSlice[i+1] ? formatCartItem(itemsSlice[i+1], startIndex + i + 1) : '<div></div>';
+      rows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">${left}${right}</div>`);
+    }
+    return rows.join('');
+  };
+
+  // Page 1 gets first 4 items, subsequent pages get 6 items each
+  const page1Items = items.slice(0, 4);
+  const remainingItems = items.slice(4);
+  
+  let cartHtml = buildGrid(page1Items, 0);
+  
+  // Add extra pages if needed
+  for (let p = 0; p < remainingItems.length; p += 6) {
+    const pageItems = remainingItems.slice(p, p + 6);
+    cartHtml += `<div style="page-break-before:always;margin-top:20px">
+      <div style="background:#1a0a2e;padding:12px 20px;border-radius:6px 6px 0 0;margin-bottom:10px">
+        <p style="color:#9a8ab0;margin:0;font-size:.85rem">Order ${orderId} — continued</p>
+      </div>
+      ${buildGrid(pageItems, 4 + p)}
+    </div>`;
+  }
 
   // ── 3. Email owner with PDF attachments ───────────────────────────────────
   await sendEmail(
@@ -185,7 +217,7 @@ exports.handler = async function(event) {
         <div style="background:#f4f0fb;border-radius:6px;padding:16px 20px;margin-bottom:20px;font-size:.95rem">
           <div style="margin-bottom:6px"><b>Name:</b> <span style="font-weight:700;color:#1a0a2e">${customer?.name || '—'}</span></div>
           <div style="margin-bottom:6px"><b>Pickup Name:</b> <span style="font-weight:700;color:#6b27b8;font-size:1.05rem">${customer?.pickupName || customer?.name || '—'}</span></div>
-          <div style="margin-bottom:6px"><b>Email:</b> ${customer?.email || '—'}</div>
+          <div style="margin-bottom:6px"><b>Email:</b> <a href="mailto:${customer?.email}" style="color:#6b27b8;font-weight:500">${customer?.email || '—'}</a></div>
           <div style="margin-bottom:6px"><b>Phone:</b> ${customer?.phone || '—'}</div>
           ${orderNotes ? `<div style="margin-top:8px"><b>Order Notes:</b><div style="margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #d4c8e8;border-radius:4px;white-space:pre-wrap;word-break:break-word">${orderNotes}</div></div>` : ''}
         </div>
@@ -210,7 +242,8 @@ exports.handler = async function(event) {
         <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
       </div>
     </div>`,
-    attachments
+    attachments,
+    customer?.email || null  // Reply-To set to customer email
   );
 
   // ── 4. Email customer confirmation ────────────────────────────────────────
