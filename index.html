@@ -1352,29 +1352,38 @@ async function handlePayment(){
             console.log('✅ Already uploaded:', tracked.name);
             continue;
           }
+          // Check Bytescale SDK is loaded
+          if (typeof Bytescale === 'undefined') {
+            throw new Error('Bytescale SDK not loaded');
+          }
+          console.log('Uploading to Bytescale:', tracked.name, 'size:', tracked.file?.size, 'type:', tracked.file?.type);
           // Upload to Bytescale using UploadManager (SDK v3)
-          const { UploadManager } = Bytescale;
-          const result = await UploadManager.upload({
-            apiKey: BYTESCALE_API_KEY,
+          const uploadManager = new Bytescale.UploadManager({ apiKey: BYTESCALE_API_KEY });
+          const { fileUrl } = await uploadManager.upload({
             data: tracked.file,
             mime: 'application/pdf',
             originalFileName: tracked.name,
+            onProgress: ({ progress }) => {
+              status.textContent = `Uploading ${tracked.name}... ${progress}%`;
+            },
           });
-          const fileUrl = result.fileUrl;
           tracked.bytescaleUrl = fileUrl;
           pdfFiles.push({ name: tracked.name, url: fileUrl });
           console.log('✅ Uploaded to Bytescale:', tracked.name, fileUrl);
         } catch(e) {
-          console.warn('Bytescale upload failed for', item.fileName, e);
+          console.error('Bytescale upload failed for', item.fileName, '— Error:', e.message, e);
+          status.textContent = `Upload failed for ${item.fileName}: ${e.message}`;
           // Fall back to base64 for smaller files
           try {
             const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
             if (b64.length < 4 * 1024 * 1024) {
               pdfFiles.push({ name: tracked.name, data: b64 });
+              console.log('✅ Fell back to base64 for:', tracked.name);
             } else {
               pdfFiles.push({ name: tracked.name, url: null, tooLarge: true });
+              console.warn('File too large for base64 fallback:', tracked.name);
             }
-          } catch(e2) { console.warn('Could not read:', item.fileName); }
+          } catch(e2) { console.warn('Could not read:', item.fileName, e2); }
         }
       }
     }
