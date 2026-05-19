@@ -153,20 +153,26 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
-  // ── 2. Build PDF attachments for email ────────────────────────────────────
+  // ── 2. Build PDF links and attachments ───────────────────────────────────
   const attachments = [];
+  const fileLinks = []; // Bytescale download links
   if (pdfFiles && pdfFiles.length > 0) {
     for (const f of pdfFiles) {
-      if (f.tooLarge || !f.data) {
-        console.log(`⚠️ File too large to attach: ${f.name} — customer will email separately`);
-        continue;
-      }
-      try {
-        const clean = f.data.replace(/^data:[^;]+;base64,/, '');
-        attachments.push({ filename: f.name, content: clean });
-        console.log(`✅ Attached: ${f.name} (${Math.round(clean.length * 0.75 / 1024)}KB)`);
-      } catch(e) {
-        console.error(`Could not attach ${f.name}:`, e.message);
+      if (f.url) {
+        // Bytescale URL — add as a download link in the email
+        fileLinks.push({ name: f.name, url: f.url });
+        console.log(`✅ Bytescale link: ${f.name} → ${f.url}`);
+      } else if (f.data && !f.tooLarge) {
+        // Small file base64 fallback — attach directly
+        try {
+          const clean = f.data.replace(/^data:[^;]+;base64,/, '');
+          attachments.push({ filename: f.name, content: clean });
+          console.log(`✅ Attached: ${f.name}`);
+        } catch(e) {
+          console.error(`Could not attach ${f.name}:`, e.message);
+        }
+      } else {
+        console.log(`⚠️ File unavailable: ${f.name}`);
       }
     }
   }
@@ -221,14 +227,22 @@ exports.handler = async function(event) {
           <div style="margin-bottom:6px"><b>Phone:</b> ${customer?.phone || '—'}</div>
           ${orderNotes ? `<div style="margin-top:8px"><b>Order Notes:</b><div style="margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #d4c8e8;border-radius:4px;white-space:pre-wrap;word-break:break-word">${orderNotes}</div></div>` : ''}
         </div>
-        ${attachments.length > 0
-          ? `<p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
-              📎 ${attachments.length} PDF file${attachments.length > 1 ? 's' : ''} attached to this email
-             </p>`
-          : `<p style="background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:12px;color:#e65100;font-size:.88rem">
-              ⚠ No PDF files were attached — customer may need to resend
-             </p>`
-        }
+        ${fileLinks.length > 0 ? `
+          <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px 16px;margin-bottom:16px">
+            <div style="color:#2e7d32;font-size:.88rem;font-weight:700;margin-bottom:8px">📎 PDF Download Links</div>
+            ${fileLinks.map(f => `<div style="margin-bottom:6px;font-size:.88rem">
+              📄 <a href="${f.url}" style="color:#6b27b8;font-weight:600">${f.name}</a>
+              &nbsp;—&nbsp; <a href="${f.url}" style="color:#6b27b8">⬇ Download</a>
+            </div>`).join('')}
+          </div>` : ''}
+        ${attachments.length > 0 ? `
+          <p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
+            📎 ${attachments.length} PDF file${attachments.length > 1 ? 's' : ''} attached to this email
+          </p>` : ''}
+        ${fileLinks.length === 0 && attachments.length === 0 ? `
+          <p style="background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:12px;color:#e65100;font-size:.88rem">
+            ⚠ No PDF files received — please follow up with the customer
+          </p>` : ''}
         <h2 style="color:#1a0a2e;font-size:1rem;margin:16px 0 10px">Order Details</h2>
         ${cartHtml}
         <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
