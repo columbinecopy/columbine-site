@@ -147,10 +147,9 @@ function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, c
     doc.fillColor('#555').fontSize(7.5).font('Helvetica')
        .text('PICKUP NAME', 36, y);
     y += 9;
-    const pickupTextWidth = Math.min(doc.widthOfString(pickupName, { fontSize: 13 }) + 12, W);
-    doc.rect(36, y, pickupTextWidth, 15).fill('#FFE500');
+    doc.rect(36, y, W, 15).fill('#FFE500');
     doc.fillColor('#000').fontSize(13).font('Helvetica-Bold')
-       .text(pickupName, 40, y + 1, { width: pickupTextWidth - 8 });
+       .text(pickupName, 40, y + 1, { width: W - 8 });
     y += 20;
     doc.fillColor('#444').fontSize(8).font('Helvetica');
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
