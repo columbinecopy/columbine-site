@@ -7,7 +7,6 @@
 const { Client, Environment, ApiError } = require('square');
 const { randomUUID } = require('crypto');
 const https = require('https');
-const PDFDocument = require('pdfkit');
 
 // ── HTTPS helper ──────────────────────────────────────────────────────────────
 function httpsRequest(options, body) {
@@ -97,146 +96,95 @@ function formatCartItem(item, index) {
     </div>`;
 }
 
-// ── Generate Work Order PDF ──────────────────────────────────────────────────
-function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 40, size: 'letter' });
-    const buffers = [];
-    doc.on('data', chunk => buffers.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(buffers)));
-    doc.on('error', reject);
+// ── Generate Work Order HTML (as printable attachment) ───────────────────────
+function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
+  const sizeLabels = {
+    letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
+    'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
+    'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
+    'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
+  };
+  const mediaLabels = {
+    bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
+    mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
+  };
 
-    const sizeLabels = {
-      letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
-      'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
-      'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
-      'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
-    };
-    const mediaLabels = {
-      bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
-      mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
-    };
+  const itemHtml = (item, index) => {
+    const lines = [
+      ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
+      ['Size', sizeLabels[item.paperSize] || item.paperSize],
+      item.format === 'small' ? ['Paper', item.paperWeight] : ['Media', mediaLabels[item.mediaType] || item.mediaType],
+      ['Color', item.color === 'color' ? 'Full Color' : 'Black & White'],
+      item.sides ? ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'] : null,
+      ['Pages', `${item.rangeStr || 'All Pages'}${item.totalPages ? ` (${item.totalPages} total)` : ''}`],
+      ['Copies', String(item.copies)],
+      ['Binding', item.binding ? (item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes') : 'None'],
+      ['Lamination', item.lamination ? 'Yes' : 'No'],
+      item.holePunch ? ['Hole Punch', 'Yes'] : null,
+      item.notes ? ['Notes', item.notes] : null,
+      ['Item Total', `$${Number(item.price || 0).toFixed(2)}`],
+    ].filter(Boolean);
 
-    const W = doc.page.width - 80; // usable width
-    const COL = W / 2 - 5; // column width for two-column layout
+    return `<div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:4px;padding:8px 10px;margin-bottom:8px;break-inside:avoid">
+      <div style="background:#4a2a7a;color:#fff;font-weight:bold;font-size:9px;padding:3px 6px;margin:-8px -10px 6px;border-radius:4px 4px 0 0">
+        ITEM ${index + 1}: ${item.fileName}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:8.5px">
+        ${lines.map(([l,v], i) => `<tr style="background:${i%2===0?'#f9f7ff':'#fff'}">
+          <td style="padding:2px 4px;color:#666;width:70px">${l}:</td>
+          <td style="padding:2px 4px;font-weight:bold;color:#1a0a2e">${v}</td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+  };
 
-    // ── Header ──
-    doc.rect(40, 40, W, 36).fill('#1a0a2e');
-    doc.fillColor('#c8a0f0').fontSize(16).font('Helvetica-Bold')
-       .text('COLUMBINE COPY & APPAREL', 50, 50, { width: W - 20 });
-    doc.fillColor('#9a8ab0').fontSize(9).font('Helvetica')
-       .text(`Work Order ${orderId}   ·   $${totalAmount} paid   ·   ${new Date().toLocaleDateString('en-US')}`, 50, 68, { width: W - 20 });
+  const items = cartItems || [];
+  const rows = [];
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push(`<tr>
+      <td style="width:50%;padding:0 4px 0 0;vertical-align:top">${itemHtml(items[i], i)}</td>
+      <td style="width:50%;padding:0 0 0 4px;vertical-align:top">${items[i+1] ? itemHtml(items[i+1], i+1) : ''}</td>
+    </tr>`);
+  }
 
-    // ── Customer Info ──
-    let y = 90;
-    doc.rect(40, y, W, 14).fill('#f4f0fb');
-    doc.fillColor('#1a0a2e').fontSize(9).font('Helvetica-Bold')
-       .text('CUSTOMER INFORMATION', 45, y + 3);
-    y += 18;
-
-    doc.fillColor('#333').fontSize(9).font('Helvetica');
-    doc.text(`Name: `, 45, y, { continued: true }).font('Helvetica-Bold').text(customer?.name || '—', { continued: true });
-    doc.font('Helvetica').text(`     Pickup Name: `, { continued: true }).font('Helvetica-Bold').text(customer?.pickupName || customer?.name || '—');
-    y += 13;
-    doc.font('Helvetica').fillColor('#333');
-    doc.text(`Email: ${customer?.email || '—'}     Phone: ${customer?.phone || '—'}`, 45, y);
-    y += 13;
-    if (orderNotes) {
-      doc.text(`Notes: `, 45, y, { continued: true }).font('Helvetica-Bold').text(orderNotes);
-      doc.font('Helvetica');
-      y += 13;
-    }
-
-    // ── Order Items in two-column grid ──
-    y += 4;
-    doc.rect(40, y, W, 14).fill('#1a0a2e');
-    doc.fillColor('#c8a0f0').fontSize(9).font('Helvetica-Bold')
-       .text('ORDER DETAILS', 45, y + 3);
-    y += 18;
-
-    const items = cartItems || [];
-    for (let i = 0; i < items.length; i += 2) {
-      const leftItem = items[i];
-      const rightItem = items[i + 1];
-      const startY = y;
-
-      // Draw both columns
-      [leftItem, rightItem].forEach((item, col) => {
-        if (!item) return;
-        const x = col === 0 ? 40 : 40 + COL + 10;
-        let iy = startY;
-
-        // Item header
-        doc.rect(x, iy, COL, 13).fill('#4a2a7a');
-        doc.fillColor('#ffffff').fontSize(8.5).font('Helvetica-Bold')
-           .text(`Item ${i + col + 1}: ${item.fileName}`, x + 4, iy + 3, { width: COL - 8, ellipsis: true });
-        iy += 16;
-
-        const lines = [
-          ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
-          ['Size', sizeLabels[item.paperSize] || item.paperSize],
-          item.format === 'small'
-            ? ['Paper', item.paperWeight]
-            : ['Media', mediaLabels[item.mediaType] || item.mediaType],
-          ['Color', item.color === 'color' ? 'Full Color' : 'Black & White'],
-          item.sides ? ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'] : null,
-          ['Pages', `${item.rangeStr || 'All Pages'}${item.totalPages ? ` (${item.totalPages} total)` : ''}`],
-          ['Copies', String(item.copies)],
-          ['Binding', item.binding ? (item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes') : 'None'],
-          ['Lamination', item.lamination ? 'Yes' : 'No'],
-          item.holePunch ? ['Hole Punch', 'Yes'] : null,
-          item.notes ? ['Notes', item.notes] : null,
-          ['Item Total', `$${Number(item.price || 0).toFixed(2)}`],
-        ].filter(Boolean);
-
-        lines.forEach(([label, value], li) => {
-          const bg = li % 2 === 0 ? '#f9f7ff' : '#ffffff';
-          doc.rect(x, iy, COL, 12).fill(bg);
-          doc.fillColor('#666').fontSize(7.5).font('Helvetica')
-             .text(label + ':', x + 4, iy + 2.5, { width: 55 });
-          doc.fillColor('#1a0a2e').font('Helvetica-Bold')
-             .text(value, x + 62, iy + 2.5, { width: COL - 66 });
-          iy += 12;
-        });
-
-        // Border around item
-        doc.rect(x, startY, COL, iy - startY).stroke('#d4c8e8');
-      });
-
-      // Advance y by the taller of the two columns
-      const leftLines = leftItem ? getItemLineCount(leftItem) : 0;
-      const rightLines = rightItem ? getItemLineCount(rightItem) : 0;
-      const maxLines = Math.max(leftLines, rightLines);
-      y += 16 + (maxLines * 12) + 8;
-
-      // Page break if needed
-      if (y > doc.page.height - 100 && i + 2 < items.length) {
-        doc.addPage();
-        y = 40;
-      }
-    }
-
-    // ── Totals ──
-    y += 4;
-    doc.rect(40, y, W, 14).fill('#1a0a2e');
-    doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
-       .text(`Subtotal: $${subtotalAmount}     Tax (8.53%): $${taxAmount}`, 45, y + 3, { continued: true });
-    doc.fillColor('#c8a0f0').font('Helvetica-Bold').fontSize(9)
-       .text(`     TOTAL PAID: $${totalAmount}`, { align: 'right', width: W - 10 });
-
-    doc.end();
-  });
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 16px; font-size: 9px; color: #333; }
+  @media print { body { padding: 8px; } }
+</style>
+</head>
+<body>
+  <div style="background:#1a0a2e;color:#c8a0f0;padding:10px 14px;border-radius:4px;margin-bottom:10px">
+    <div style="font-size:14px;font-weight:bold">COLUMBINE COPY & APPAREL — WORK ORDER</div>
+    <div style="color:#9a8ab0;font-size:9px">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-US')}</div>
+  </div>
+  <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:9px">
+    <table style="width:100%;border-collapse:collapse">
+      <tr>
+        <td style="width:50%"><b>Name:</b> ${customer?.name || '—'}</td>
+        <td style="width:50%"><b>Pickup Name:</b> <span style="color:#6b27b8;font-weight:bold">${customer?.pickupName || customer?.name || '—'}</span></td>
+      </tr>
+      <tr>
+        <td><b>Email:</b> ${customer?.email || '—'}</td>
+        <td><b>Phone:</b> ${customer?.phone || '—'}</td>
+      </tr>
+      ${orderNotes ? `<tr><td colspan="2"><b>Notes:</b> ${orderNotes}</td></tr>` : ''}
+    </table>
+  </div>
+  <table style="width:100%;border-collapse:collapse">
+    ${rows.join('')}
+  </table>
+  <div style="background:#1a0a2e;color:#9a8ab0;padding:8px 12px;border-radius:4px;margin-top:8px;font-size:9px">
+    Subtotal: $${subtotalAmount} &nbsp;·&nbsp; Tax (8.53%): $${taxAmount} &nbsp;·&nbsp;
+    <span style="color:#c8a0f0;font-weight:bold;font-size:11px">TOTAL PAID: $${totalAmount}</span>
+  </div>
+</body>
+</html>`;
 }
 
-function getItemLineCount(item) {
-  let count = 7; // base lines: format, size, media/paper, color, pages, copies, binding
-  if (item.sides) count++;
-  if (item.lamination) count++;
-  if (item.holePunch) count++;
-  if (item.notes) count++;
-  count++; // item total
-  return count;
-}
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 exports.handler = async function(event) {
@@ -289,17 +237,7 @@ exports.handler = async function(event) {
     payment = response.result.payment;
     console.log(`✅ Payment success — ${orderId} — $${totalAmount}`);
 
-  // ── Generate Work Order PDF ────────────────────────────────────────────
-  let workOrderPdfBase64 = null;
-  try {
-    const pdfBuffer = await generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
-    workOrderPdfBase64 = pdfBuffer.toString('base64');
-    console.log('✅ Work order PDF generated');
-  } catch(e) {
-    console.error('Work order PDF generation failed:', e.message);
-  }
-
-  } catch(error) {
+    } catch(error) {
     if (error instanceof ApiError) {
       const msg = error.errors?.map(e => e.detail).join('; ') || 'Payment failed.';
       console.error('Square error:', msg);
@@ -309,11 +247,21 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
+  // ── Generate Work Order HTML ──────────────────────────────────────────────
+  let workOrderPdfBase64 = null;
+  try {
+    const htmlContent = generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
+    workOrderPdfBase64 = Buffer.from(htmlContent).toString('base64');
+    console.log('✅ Work order generated');
+  } catch(e) {
+    console.error('Work order generation failed:', e.message);
+  }
+
   // ── 2. Build PDF links and attachments ───────────────────────────────────
   const attachments = [];
   // Attach work order PDF if generated
   if (workOrderPdfBase64) {
-    attachments.push({ filename: `WorkOrder-${orderId}.pdf`, content: workOrderPdfBase64 });
+    attachments.push({ filename: `WorkOrder-${orderId}.html`, content: workOrderPdfBase64 });
   }
   const fileLinks = []; // Bytescale download links
   if (pdfFiles && pdfFiles.length > 0) {
