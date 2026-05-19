@@ -15,9 +15,10 @@ function httpsRequest(options, body) {
       const chunks = [];
       res.on('data', c => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
       res.on('end', () => {
-        const text = Buffer.concat(chunks).toString('utf8');
-        try { resolve({ status: res.statusCode, body: JSON.parse(text) }); }
-        catch(e) { resolve({ status: res.statusCode, body: text }); }
+        const rawBody = Buffer.concat(chunks);
+        const text = rawBody.toString('utf8');
+        try { resolve({ status: res.statusCode, body: JSON.parse(text), rawBody }); }
+        catch(e) { resolve({ status: res.statusCode, body: text, rawBody }); }
       });
     });
     req.on('error', reject);
@@ -145,17 +146,16 @@ function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, 
     </div>`);
   }
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
+  return `<div class="cca-work-order" style="font-family:Arial,sans-serif;font-size:10px;color:#333;max-width:700px">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 10px; color: #333; padding: 16px; }
-  @media print { body { padding: 8px; } @page { margin: 0.5in; size: letter; } }
+  @media print {
+    body * { visibility: hidden !important; }
+    .cca-work-order, .cca-work-order * { visibility: visible !important; }
+    .cca-work-order { position: fixed; left: 0; top: 0; width: 100%; padding: 0.4in; }
+    @page { margin: 0.4in; size: letter; }
+  }
 </style>
-</head>
-<body>
+<div style="padding:0">
 
 <div style="background:#1a0a2e;padding:14px 20px;border-radius:6px 6px 0 0">
   <div style="display:flex;justify-content:space-between;align-items:center">
@@ -186,8 +186,7 @@ function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, 
   </div>
 </div>
 
-</body>
-</html>`;
+</div></div>`;
 }
 
 
@@ -252,22 +251,12 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
-  // ── Generate Work Order HTML ──────────────────────────────────────────────
-  let workOrderPdfBase64 = null;
-  try {
-    const htmlContent = generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
-    workOrderPdfBase64 = Buffer.from(htmlContent).toString('base64');
-    console.log('✅ Work order generated');
-  } catch(e) {
-    console.error('Work order generation failed:', e.message);
-  }
+  // ── Generate Work Order HTML (embedded in email) ─────────────────────────
+  const workOrderHtml = generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
+  console.log('✅ Work order generated');
 
   // ── 2. Build PDF links and attachments ───────────────────────────────────
   const attachments = [];
-  // Attach work order PDF if generated
-  if (workOrderPdfBase64) {
-    attachments.push({ filename: `WorkOrder-${orderId}.html`, content: workOrderPdfBase64 });
-  }
   const fileLinks = []; // Bytescale download links
   if (pdfFiles && pdfFiles.length > 0) {
     for (const f of pdfFiles) {
@@ -368,6 +357,14 @@ exports.handler = async function(event) {
         </div>
         <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
       </div>
+    </div>
+
+    <!-- PRINT DIVIDER -->
+    <div style="margin-top:24px;border-top:2px dashed #ccc;padding-top:16px">
+      <p style="font-size:11px;color:#999;text-align:center;margin-bottom:12px;font-style:italic">
+        ✂ &nbsp; Print the work order below — open this email, scroll here, then click Print &nbsp; ✂
+      </p>
+      ${workOrderHtml}
     </div>`,
     attachments,
     customer?.email || null  // Reply-To set to customer email
