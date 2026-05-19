@@ -1,4 +1,4 @@
-<!-- Columbine Copy & Apparel v2.0 CART BUILD -- Generated: 2026-03-23 04:07:29 -->
+<!-- Columbine Copy & Apparel v3.0 -- Generated: 2026-05-19 18:51:43 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1383,4 +1383,35 @@ async function handlePayment(){
     console.error('Payment fetch error:', err);
     if(err.message && err.message.includes('413')) {
       status.textContent='Your PDF file is too large to upload. Please compress it and try again.';
-    } else if(err.message && err.message.include
+    } else if(err.message && err.message.includes('502')) {
+      status.textContent='Server error — please try again in a moment.';
+    } else {
+      status.textContent='Network error — please check your connection and try again. If this persists please call us directly.';
+    }
+    btn.disabled=false; btn.textContent='🔒 Pay & Place Order';
+  }
+}
+
+function showPayment(){
+  document.getElementById('checkoutBtn').style.display='none';
+  document.getElementById('paymentSection').style.display='block';
+  document.getElementById('card-button').disabled=false;
+  initSquare();
+}
+
+function closeModal(){
+  document.getElementById('successModal').classList.remove('visible');
+  cart=[]; saveCart(); renderCart();
+  document.getElementById('paymentSection').style.display='none';
+  document.getElementById('checkoutBtn').style.display='';
+  squareCard=null;
+  ['firstName','lastName','email','phone','orderNotes'].forEach(id=>document.getElementById(id).value='');
+  resetForm();
+}
+
+// ---- INIT ----
+loadCart();
+renderCart();
+</script>
+</body>
+</html>
