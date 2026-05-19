@@ -1,12 +1,17 @@
 [build]
   functions = "netlify/functions"
+
 [build.environment]
   NODE_VERSION = "18"
+
 [functions]
-  included_files = ["netlify/functions/**", "logo.png"]
+  included_files = ["netlify/functions/**"]
+
 [functions."create-payment"]
   timeout = 26
+
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "SAMEORIGIN"
+    Content-Security-Policy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; font-src * data:; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; script-src-elem 'self' 'unsafe-inline' https:; worker-src 'self' blob:; connect-src 'self' https: wss:; img-src 'self' data: blob: https:; frame-src 'self' https:;"
