@@ -232,6 +232,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.5}
 footer{background:var(--ink);color:#5a4a38;text-align:center;padding:2rem;font-size:.8rem;border-top:3px solid var(--gold)}
 footer strong{color:var(--gold)}
 </style>
+  <script src="https://js.bytescale.com/sdk/v3"></script>
 </head>
 <body>
 
@@ -596,6 +597,7 @@ footer strong{color:var(--gold)}
 
 <script>
 // ════════════════════════════════════════════════════════════════
+const BYTESCALE_API_KEY = 'public_223k2d7CmaJGWtfXLMAi16UANnhY';
 const TAX_RATE = 0.0853; // 8.53% Montrose, CO sales tax
 const MINIMUM_ORDER = 3.00; // Minimum order amount
 
@@ -1337,27 +1339,46 @@ async function handlePayment(){
   try{
     const result=await squareCard.tokenize();
     if(result.status!=='OK'){ status.textContent=result.errors?.[0]?.message||'Card error.'; btn.disabled=false; btn.textContent='🔒 Pay & Place Order'; return; }
-    // Collect PDF files as base64 and check total size
+    // Upload PDF files to Bytescale for large file support (up to 97MB)
     const pdfFiles = [];
-    let totalBase64Size = 0;
+    status.textContent = 'Uploading files...';
     for (const item of cart) {
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
       if (tracked && tracked.file) {
         try {
-          const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
-          totalBase64Size += b64.length;
-          // If total payload would exceed 5MB warn and skip attachment
-          if (totalBase64Size > 5 * 1024 * 1024) {
-            console.warn('PDF too large to attach:', item.fileName);
-            status.textContent = `"${item.fileName}" is too large to send automatically. Your order will still be placed — please email the file to print@columbinecopy.com with your order number.`;
-            // Still add to pdfFiles but without data so order goes through
-            pdfFiles.push({name:tracked.name, data:null, tooLarge:true});
-          } else {
-            pdfFiles.push({name:tracked.name, data:b64});
+          // Check if already uploaded to Bytescale
+          if (tracked.bytescaleUrl) {
+            pdfFiles.push({ name: tracked.name, url: tracked.bytescaleUrl });
+            console.log('✅ Already uploaded:', tracked.name);
+            continue;
           }
-        } catch(e){ console.warn('Could not read:',item.fileName); }
+          // Upload to Bytescale
+          const { FileApi } = Bytescale;
+          const fileApi = new FileApi({ apiKey: BYTESCALE_API_KEY });
+          const result = await fileApi.upload({
+            data: tracked.file,
+            mime: 'application/pdf',
+            originalFileName: tracked.name,
+          });
+          const fileUrl = result.fileUrl;
+          tracked.bytescaleUrl = fileUrl;
+          pdfFiles.push({ name: tracked.name, url: fileUrl });
+          console.log('✅ Uploaded to Bytescale:', tracked.name, fileUrl);
+        } catch(e) {
+          console.warn('Bytescale upload failed for', item.fileName, e);
+          // Fall back to base64 for smaller files
+          try {
+            const b64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(tracked.file); });
+            if (b64.length < 4 * 1024 * 1024) {
+              pdfFiles.push({ name: tracked.name, data: b64 });
+            } else {
+              pdfFiles.push({ name: tracked.name, url: null, tooLarge: true });
+            }
+          } catch(e2) { console.warn('Could not read:', item.fileName); }
+        }
       }
     }
+    status.textContent = 'Processing payment...';
     const total=cart.reduce((s,i)=>s+i.price,0);
     if (!total || total <= 0) {
       status.textContent = 'Cart total is $0 — please add items to your cart first.';
