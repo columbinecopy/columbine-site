@@ -1352,10 +1352,10 @@ async function handlePayment(){
             console.log('✅ Already uploaded:', tracked.name);
             continue;
           }
-          // Upload to Bytescale
-          const { FileApi } = Bytescale;
-          const fileApi = new FileApi({ apiKey: BYTESCALE_API_KEY });
-          const result = await fileApi.upload({
+          // Upload to Bytescale using UploadManager (SDK v3)
+          const { UploadManager } = Bytescale;
+          const result = await UploadManager.upload({
+            apiKey: BYTESCALE_API_KEY,
             data: tracked.file,
             mime: 'application/pdf',
             originalFileName: tracked.name,
