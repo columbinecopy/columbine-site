@@ -7,6 +7,7 @@
 const { Client, Environment, ApiError } = require('square');
 const { randomUUID } = require('crypto');
 const https = require('https');
+const PDFDocument = require('pdfkit');
 
 // ── HTTPS helper ──────────────────────────────────────────────────────────────
 function httpsRequest(options, body) {
@@ -96,6 +97,147 @@ function formatCartItem(item, index) {
     </div>`;
 }
 
+// ── Generate Work Order PDF ──────────────────────────────────────────────────
+function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 40, size: 'letter' });
+    const buffers = [];
+    doc.on('data', chunk => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const sizeLabels = {
+      letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
+      'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
+      'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
+      'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
+    };
+    const mediaLabels = {
+      bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
+      mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
+    };
+
+    const W = doc.page.width - 80; // usable width
+    const COL = W / 2 - 5; // column width for two-column layout
+
+    // ── Header ──
+    doc.rect(40, 40, W, 36).fill('#1a0a2e');
+    doc.fillColor('#c8a0f0').fontSize(16).font('Helvetica-Bold')
+       .text('COLUMBINE COPY & APPAREL', 50, 50, { width: W - 20 });
+    doc.fillColor('#9a8ab0').fontSize(9).font('Helvetica')
+       .text(`Work Order ${orderId}   ·   $${totalAmount} paid   ·   ${new Date().toLocaleDateString('en-US')}`, 50, 68, { width: W - 20 });
+
+    // ── Customer Info ──
+    let y = 90;
+    doc.rect(40, y, W, 14).fill('#f4f0fb');
+    doc.fillColor('#1a0a2e').fontSize(9).font('Helvetica-Bold')
+       .text('CUSTOMER INFORMATION', 45, y + 3);
+    y += 18;
+
+    doc.fillColor('#333').fontSize(9).font('Helvetica');
+    doc.text(`Name: `, 45, y, { continued: true }).font('Helvetica-Bold').text(customer?.name || '—', { continued: true });
+    doc.font('Helvetica').text(`     Pickup Name: `, { continued: true }).font('Helvetica-Bold').text(customer?.pickupName || customer?.name || '—');
+    y += 13;
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(`Email: ${customer?.email || '—'}     Phone: ${customer?.phone || '—'}`, 45, y);
+    y += 13;
+    if (orderNotes) {
+      doc.text(`Notes: `, 45, y, { continued: true }).font('Helvetica-Bold').text(orderNotes);
+      doc.font('Helvetica');
+      y += 13;
+    }
+
+    // ── Order Items in two-column grid ──
+    y += 4;
+    doc.rect(40, y, W, 14).fill('#1a0a2e');
+    doc.fillColor('#c8a0f0').fontSize(9).font('Helvetica-Bold')
+       .text('ORDER DETAILS', 45, y + 3);
+    y += 18;
+
+    const items = cartItems || [];
+    for (let i = 0; i < items.length; i += 2) {
+      const leftItem = items[i];
+      const rightItem = items[i + 1];
+      const startY = y;
+
+      // Draw both columns
+      [leftItem, rightItem].forEach((item, col) => {
+        if (!item) return;
+        const x = col === 0 ? 40 : 40 + COL + 10;
+        let iy = startY;
+
+        // Item header
+        doc.rect(x, iy, COL, 13).fill('#4a2a7a');
+        doc.fillColor('#ffffff').fontSize(8.5).font('Helvetica-Bold')
+           .text(`Item ${i + col + 1}: ${item.fileName}`, x + 4, iy + 3, { width: COL - 8, ellipsis: true });
+        iy += 16;
+
+        const lines = [
+          ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
+          ['Size', sizeLabels[item.paperSize] || item.paperSize],
+          item.format === 'small'
+            ? ['Paper', item.paperWeight]
+            : ['Media', mediaLabels[item.mediaType] || item.mediaType],
+          ['Color', item.color === 'color' ? 'Full Color' : 'Black & White'],
+          item.sides ? ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'] : null,
+          ['Pages', `${item.rangeStr || 'All Pages'}${item.totalPages ? ` (${item.totalPages} total)` : ''}`],
+          ['Copies', String(item.copies)],
+          ['Binding', item.binding ? (item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes') : 'None'],
+          ['Lamination', item.lamination ? 'Yes' : 'No'],
+          item.holePunch ? ['Hole Punch', 'Yes'] : null,
+          item.notes ? ['Notes', item.notes] : null,
+          ['Item Total', `$${Number(item.price || 0).toFixed(2)}`],
+        ].filter(Boolean);
+
+        lines.forEach(([label, value], li) => {
+          const bg = li % 2 === 0 ? '#f9f7ff' : '#ffffff';
+          doc.rect(x, iy, COL, 12).fill(bg);
+          doc.fillColor('#666').fontSize(7.5).font('Helvetica')
+             .text(label + ':', x + 4, iy + 2.5, { width: 55 });
+          doc.fillColor('#1a0a2e').font('Helvetica-Bold')
+             .text(value, x + 62, iy + 2.5, { width: COL - 66 });
+          iy += 12;
+        });
+
+        // Border around item
+        doc.rect(x, startY, COL, iy - startY).stroke('#d4c8e8');
+      });
+
+      // Advance y by the taller of the two columns
+      const leftLines = leftItem ? getItemLineCount(leftItem) : 0;
+      const rightLines = rightItem ? getItemLineCount(rightItem) : 0;
+      const maxLines = Math.max(leftLines, rightLines);
+      y += 16 + (maxLines * 12) + 8;
+
+      // Page break if needed
+      if (y > doc.page.height - 100 && i + 2 < items.length) {
+        doc.addPage();
+        y = 40;
+      }
+    }
+
+    // ── Totals ──
+    y += 4;
+    doc.rect(40, y, W, 14).fill('#1a0a2e');
+    doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
+       .text(`Subtotal: $${subtotalAmount}     Tax (8.53%): $${taxAmount}`, 45, y + 3, { continued: true });
+    doc.fillColor('#c8a0f0').font('Helvetica-Bold').fontSize(9)
+       .text(`     TOTAL PAID: $${totalAmount}`, { align: 'right', width: W - 10 });
+
+    doc.end();
+  });
+}
+
+function getItemLineCount(item) {
+  let count = 7; // base lines: format, size, media/paper, color, pages, copies, binding
+  if (item.sides) count++;
+  if (item.lamination) count++;
+  if (item.holePunch) count++;
+  if (item.notes) count++;
+  count++; // item total
+  return count;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
@@ -108,7 +250,10 @@ exports.handler = async function(event) {
 
   const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles } = body;
 
-  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0);
+  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0, 'cartItems:', cartItems?.length || 0);
+  if (!cartItems || cartItems.length === 0) {
+    console.log('WARNING: cartItems is empty or missing');
+  }
 
   if (!sourceId) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
@@ -143,6 +288,17 @@ exports.handler = async function(event) {
     });
     payment = response.result.payment;
     console.log(`✅ Payment success — ${orderId} — $${totalAmount}`);
+
+  // ── Generate Work Order PDF ────────────────────────────────────────────
+  let workOrderPdfBase64 = null;
+  try {
+    const pdfBuffer = await generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
+    workOrderPdfBase64 = pdfBuffer.toString('base64');
+    console.log('✅ Work order PDF generated');
+  } catch(e) {
+    console.error('Work order PDF generation failed:', e.message);
+  }
+
   } catch(error) {
     if (error instanceof ApiError) {
       const msg = error.errors?.map(e => e.detail).join('; ') || 'Payment failed.';
@@ -155,6 +311,10 @@ exports.handler = async function(event) {
 
   // ── 2. Build PDF links and attachments ───────────────────────────────────
   const attachments = [];
+  // Attach work order PDF if generated
+  if (workOrderPdfBase64) {
+    attachments.push({ filename: `WorkOrder-${orderId}.pdf`, content: workOrderPdfBase64 });
+  }
   const fileLinks = []; // Bytescale download links
   if (pdfFiles && pdfFiles.length > 0) {
     for (const f of pdfFiles) {
