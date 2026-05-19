@@ -129,29 +129,35 @@ function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, c
     doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
        .text('419 N. 1st Street, Montrose, CO 81401  |  (970) 249-4418  |  ColumbineCopy.com', 44, y + 22, { width: W - 100 });
     doc.fillColor('#9a8ab0').fontSize(7).font('Helvetica')
-       .text('ORDER', W - 30, y + 6, { width: 80, align: 'right' });
-    doc.fillColor('#c8a0f0').fontSize(13).font('Helvetica-Bold')
-       .text(orderId, W - 30, y + 16, { width: 80, align: 'right' });
+       .text('ORDER', 44, y + 6, { align: 'right', width: W - 8 });
+    doc.fillColor('#c8a0f0').fontSize(11).font('Helvetica-Bold')
+       .text(orderId, 44, y + 17, { align: 'right', width: W - 8 });
     y += 42;
 
     // ── Customer ──
     doc.fillColor('#888').fontSize(7).font('Helvetica')
        .text('CUSTOMER', 36, y);
     y += 10;
-    doc.rect(36, y, W, 14).fill('#FFE500');
-    doc.fillColor('#000').fontSize(14).font('Helvetica-Bold')
-       .text(customer?.name || '—', 40, y + 1, { width: W - 8 });
-    y += 18;
+    // Customer name — no highlight
+    doc.fillColor('#1a0a2e').fontSize(13).font('Helvetica-Bold')
+       .text(customer?.name || '—', 36, y);
+    y += 16;
+    // Pickup name — highlighted in yellow
+    const pickupName = customer?.pickupName || customer?.name || '—';
+    doc.fillColor('#555').fontSize(7.5).font('Helvetica')
+       .text('PICKUP NAME', 36, y);
+    y += 9;
+    const pickupTextWidth = Math.min(doc.widthOfString(pickupName, { fontSize: 13 }) + 12, W);
+    doc.rect(36, y, pickupTextWidth, 15).fill('#FFE500');
+    doc.fillColor('#000').fontSize(13).font('Helvetica-Bold')
+       .text(pickupName, 40, y + 1, { width: pickupTextWidth - 8 });
+    y += 20;
     doc.fillColor('#444').fontSize(8).font('Helvetica');
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     doc.text(`Email: ${customer?.email || '—'}`, 36, y, { continued: true, width: W/3 });
     doc.text(`Phone: ${customer?.phone || '—'}`, { continued: true, width: W/3 });
     doc.text(`Date: ${dateStr}`, { width: W/3 });
     y += 12;
-    if (customer?.pickupName && customer.pickupName !== customer.name) {
-      doc.fillColor('#6b27b8').font('Helvetica-Bold').text(`Pickup Name: ${customer.pickupName}`, 36, y);
-      y += 12;
-    }
     if (orderNotes) {
       doc.fillColor('#555').font('Helvetica').fontSize(8).text(`Notes: ${orderNotes}`, 36, y, { width: W });
       y += 12;
