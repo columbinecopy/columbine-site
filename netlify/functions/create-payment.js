@@ -96,7 +96,7 @@ function formatCartItem(item, index) {
     </div>`;
 }
 
-// ── Generate Work Order HTML (as printable attachment) ───────────────────────
+// ── Generate Work Order HTML ─────────────────────────────────────────────────
 function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
   const sizeLabels = {
     letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
@@ -109,42 +109,40 @@ function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, 
     mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
   };
 
+  const val = (v) => `<span style="font-weight:700;color:#1a0a2e">${v}</span>`;
+
   const itemHtml = (item, index) => {
     const lines = [
-      ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
-      ['Size', sizeLabels[item.paperSize] || item.paperSize],
-      item.format === 'small' ? ['Paper', item.paperWeight] : ['Media', mediaLabels[item.mediaType] || item.mediaType],
-      ['Color', item.color === 'color' ? 'Full Color' : 'Black & White'],
-      item.sides ? ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'] : null,
-      ['Pages', `${item.rangeStr || 'All Pages'}${item.totalPages ? ` (${item.totalPages} total)` : ''}`],
-      ['Copies', String(item.copies)],
-      ['Binding', item.binding ? (item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes') : 'None'],
-      ['Lamination', item.lamination ? 'Yes' : 'No'],
-      item.holePunch ? ['Hole Punch', 'Yes'] : null,
-      item.notes ? ['Notes', item.notes] : null,
-      ['Item Total', `$${Number(item.price || 0).toFixed(2)}`],
+      `<b>File:</b> ${val(item.fileName)}`,
+      `<b>Format:</b> ${val(item.format === 'large' ? 'Large Format' : 'Small Format')}`,
+      `<b>Size:</b> ${val(sizeLabels[item.paperSize] || item.paperSize)}`,
+      item.format === 'small'
+        ? `<b>Paper:</b> ${val(item.paperWeight)}`
+        : `<b>Media:</b> ${val(mediaLabels[item.mediaType] || item.mediaType)}`,
+      `<b>Color:</b> ${val(item.color === 'color' ? '🎨 Full Color' : '⬛ Black & White')}`,
+      item.sides ? `<b>Sides:</b> ${val(item.sides === 'double' ? 'Double-sided' : 'Single-sided')}` : '',
+      `<b>Pages:</b> ${val(item.rangeStr || 'All Pages')} ${item.totalPages ? `(${item.totalPages} total)` : ''}`,
+      `<b>Copies:</b> ${val(item.copies)}`,
+      item.binding ? `<b>Binding:</b> ${val(item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes')}` : `<b>Binding:</b> ${val('None')}`,
+      item.lamination ? `<b>Lamination:</b> ${val('✅ Yes')}` : `<b>Lamination:</b> ${val('No')}`,
+      item.holePunch ? `<b>Hole Punch:</b> ${val('✅ Yes')}` : '',
+      item.notes ? `<b>Notes:</b><div style="margin-top:4px;padding:6px 8px;background:#fff;border:1px solid #d4c8e8;border-radius:3px;white-space:pre-wrap;word-break:break-word;font-size:0.82rem">${item.notes}</div>` : '',
+      `<b>Item Total:</b> ${val('$'+Number(item.price || 0).toFixed(2))}`,
     ].filter(Boolean);
 
-    return `<div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:4px;padding:8px 10px;margin-bottom:8px;break-inside:avoid">
-      <div style="background:#4a2a7a;color:#fff;font-weight:bold;font-size:9px;padding:3px 6px;margin:-8px -10px 6px;border-radius:4px 4px 0 0">
-        ITEM ${index + 1}: ${item.fileName}
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:8.5px">
-        ${lines.map(([l,v], i) => `<tr style="background:${i%2===0?'#f9f7ff':'#fff'}">
-          <td style="padding:2px 4px;color:#666;width:70px">${l}:</td>
-          <td style="padding:2px 4px;font-weight:bold;color:#1a0a2e">${v}</td>
-        </tr>`).join('')}
-      </table>
+    return `<div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:12px 14px;margin-bottom:10px;break-inside:avoid">
+      <div style="font-weight:700;color:#1a0a2e;font-size:.9rem;margin-bottom:8px;border-bottom:1px solid #d4c8e8;padding-bottom:5px">Item ${index + 1}</div>
+      ${lines.map(l => `<div style="font-size:0.82rem;color:#333;margin-bottom:4px;line-height:1.3">${l}</div>`).join('')}
     </div>`;
   };
 
   const items = cartItems || [];
-  const rows = [];
+  const gridRows = [];
   for (let i = 0; i < items.length; i += 2) {
-    rows.push(`<tr>
-      <td style="width:50%;padding:0 4px 0 0;vertical-align:top">${itemHtml(items[i], i)}</td>
-      <td style="width:50%;padding:0 0 0 4px;vertical-align:top">${items[i+1] ? itemHtml(items[i+1], i+1) : ''}</td>
-    </tr>`);
+    gridRows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
+      ${itemHtml(items[i], i)}
+      ${items[i+1] ? itemHtml(items[i+1], i+1) : '<div></div>'}
+    </div>`);
   }
 
   return `<!DOCTYPE html>
@@ -152,35 +150,42 @@ function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, 
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 16px; font-size: 9px; color: #333; }
-  @media print { body { padding: 8px; } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10px; color: #333; padding: 16px; }
+  @media print { body { padding: 8px; } @page { margin: 0.5in; size: letter; } }
 </style>
 </head>
 <body>
-  <div style="background:#1a0a2e;color:#c8a0f0;padding:10px 14px;border-radius:4px;margin-bottom:10px">
-    <div style="font-size:14px;font-weight:bold">COLUMBINE COPY & APPAREL — WORK ORDER</div>
-    <div style="color:#9a8ab0;font-size:9px">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-US')}</div>
+
+<div style="background:#1a0a2e;padding:14px 20px;border-radius:6px 6px 0 0">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h1 style="color:#c8a0f0;font-size:1.2rem;margin:0">New Print Order</h1>
+      <p style="color:#9a8ab0;margin:4px 0 0;font-size:.85rem">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</p>
+    </div>
   </div>
-  <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:9px">
-    <table style="width:100%;border-collapse:collapse">
-      <tr>
-        <td style="width:50%"><b>Name:</b> ${customer?.name || '—'}</td>
-        <td style="width:50%"><b>Pickup Name:</b> <span style="color:#6b27b8;font-weight:bold">${customer?.pickupName || customer?.name || '—'}</span></td>
-      </tr>
-      <tr>
-        <td><b>Email:</b> ${customer?.email || '—'}</td>
-        <td><b>Phone:</b> ${customer?.phone || '—'}</td>
-      </tr>
-      ${orderNotes ? `<tr><td colspan="2"><b>Notes:</b> ${orderNotes}</td></tr>` : ''}
-    </table>
+</div>
+
+<div style="background:#fff;padding:16px 20px;border:1px solid #d4c8e8;border-top:none;border-radius:0 0 6px 6px;margin-bottom:12px">
+  <div style="background:#f4f0fb;border-radius:6px;padding:12px 16px;margin-bottom:14px;font-size:.88rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><b>Name:</b> <span style="font-weight:700;color:#1a0a2e">${customer?.name || '—'}</span></div>
+      <div><b>Email:</b> <a href="mailto:${customer?.email}" style="color:#6b27b8">${customer?.email || '—'}</a></div>
+      <div><b>Pickup Name:</b> <span style="font-weight:700;color:#6b27b8;font-size:1rem">${customer?.pickupName || customer?.name || '—'}</span></div>
+      <div><b>Phone:</b> ${customer?.phone || '—'}</div>
+    </div>
+    ${orderNotes ? `<div style="margin-top:8px"><b>Order Notes:</b><div style="margin-top:4px;padding:6px 8px;background:#fff;border:1px solid #d4c8e8;border-radius:3px;white-space:pre-wrap;word-break:break-word">${orderNotes}</div></div>` : ''}
   </div>
-  <table style="width:100%;border-collapse:collapse">
-    ${rows.join('')}
-  </table>
-  <div style="background:#1a0a2e;color:#9a8ab0;padding:8px 12px;border-radius:4px;margin-top:8px;font-size:9px">
-    Subtotal: $${subtotalAmount} &nbsp;·&nbsp; Tax (8.53%): $${taxAmount} &nbsp;·&nbsp;
-    <span style="color:#c8a0f0;font-weight:bold;font-size:11px">TOTAL PAID: $${totalAmount}</span>
+
+  ${gridRows.join('')}
+
+  <div style="background:#1a0a2e;border-radius:6px;padding:12px 16px;margin-top:8px">
+    <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:2px">Subtotal: $${subtotalAmount} &nbsp;·&nbsp; Tax (8.53%): $${taxAmount}</div>
+    <div style="color:#9a8ab0;font-size:.82rem;text-transform:uppercase;letter-spacing:1px">Total Paid</div>
+    <div style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</div>
   </div>
+</div>
+
 </body>
 </html>`;
 }
