@@ -548,6 +548,7 @@ footer strong{color:var(--gold)}
     <div class="checkout-body">
       <div class="checkout-field"><label>First Name</label><input type="text" id="firstName" placeholder="Jane"></div>
       <div class="checkout-field"><label>Last Name</label><input type="text" id="lastName" placeholder="Smith"></div>
+      <div class="checkout-field"><label>Pickup Name <span style="font-weight:normal;font-size:.8rem;color:#9a8ab0">(if different from above)</span></label><input type="text" id="pickupName" placeholder="Leave blank to use your name"></div>
       <div class="checkout-field"><label>Email Address</label><input type="email" id="email" placeholder="jane@example.com"></div>
       <div class="checkout-field"><label>Phone (optional)</label><input type="text" id="phone" placeholder="+1 (555) 000-0000"></div>
       <div class="checkout-field"><label>Order Notes</label><textarea id="orderNotes" placeholder="Any overall order notes..."></textarea></div>
@@ -1373,7 +1374,12 @@ async function handlePayment(){
     const chargeTotal = total + tax;
     const response=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       sourceId:result.token, amountCents:Math.round(chargeTotal*100), currency:'USD', // includes 8.53% tax
-      customer:{name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,email:document.getElementById('email').value,phone:document.getElementById('phone').value},
+      customer:{
+        name:document.getElementById('firstName').value+' '+document.getElementById('lastName').value,
+        pickupName:document.getElementById('pickupName').value.trim() || (document.getElementById('firstName').value+' '+document.getElementById('lastName').value),
+        email:document.getElementById('email').value,
+        phone:document.getElementById('phone').value
+      },
       cartItems:cart, orderNotes:document.getElementById('orderNotes').value, pdfFiles,
     })});
     const data=await response.json();
