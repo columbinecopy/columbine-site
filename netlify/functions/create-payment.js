@@ -7,6 +7,7 @@
 const { Client, Environment, ApiError } = require('square');
 const { randomUUID } = require('crypto');
 const https = require('https');
+const PDFDocument = require('pdfkit');
 
 // ── HTTPS helper ──────────────────────────────────────────────────────────────
 function httpsRequest(options, body) {
@@ -97,96 +98,155 @@ function formatCartItem(item, index) {
     </div>`;
 }
 
-// ── Generate Work Order HTML ─────────────────────────────────────────────────
-function generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
-  const sizeLabels = {
-    letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
-    'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
-    'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
-    'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
-  };
-  const mediaLabels = {
-    bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
-    mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
-  };
+// ── Generate Work Order PDF using PDFKit ────────────────────────────────────
+function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 36, size: 'letter' });
+    const buffers = [];
+    doc.on('data', chunk => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
 
-  const val = (v) => `<span style="font-weight:700;color:#1a0a2e">${v}</span>`;
+    const sizeLabels = {
+      letter:'Letter', legal:'Legal', a4:'A4', tabloid:'Tabloid',
+      'arch-a':'Arch A','arch-b':'Arch B','arch-c':'Arch C','arch-d':'Arch D',
+      'arch-e':'Arch E','arch-e1':'Arch E1','arch-e2':'Arch E2','arch-e3':'Arch E3',
+      'ansi-c':'ANSI C','ansi-d':'ANSI D','ansi-e':'ANSI E',
+    };
+    const mediaLabels = {
+      bond20:'Standard Bond (20lb)', bond36:'Heavyweight Bond (36lb)',
+      mylar:'Mylar Film', vellum:'Vellum', photo:'Photo Paper',
+    };
 
-  const itemHtml = (item, index) => {
-    const lines = [
-      `<b>File:</b> ${val(item.fileName)}`,
-      `<b>Format:</b> ${val(item.format === 'large' ? 'Large Format' : 'Small Format')}`,
-      `<b>Size:</b> ${val(sizeLabels[item.paperSize] || item.paperSize)}`,
-      item.format === 'small'
-        ? `<b>Paper:</b> ${val(item.paperWeight)}`
-        : `<b>Media:</b> ${val(mediaLabels[item.mediaType] || item.mediaType)}`,
-      `<b>Color:</b> ${val(item.color === 'color' ? '🎨 Full Color' : '⬛ Black & White')}`,
-      item.sides ? `<b>Sides:</b> ${val(item.sides === 'double' ? 'Double-sided' : 'Single-sided')}` : '',
-      `<b>Pages:</b> ${val(item.rangeStr || 'All Pages')} ${item.totalPages ? `(${item.totalPages} total)` : ''}`,
-      `<b>Copies:</b> ${val(item.copies)}`,
-      item.binding ? `<b>Binding:</b> ${val(item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes')}` : `<b>Binding:</b> ${val('None')}`,
-      item.lamination ? `<b>Lamination:</b> ${val('✅ Yes')}` : `<b>Lamination:</b> ${val('No')}`,
-      item.holePunch ? `<b>Hole Punch:</b> ${val('✅ Yes')}` : '',
-      item.notes ? `<b>Notes:</b><div style="margin-top:4px;padding:6px 8px;background:#fff;border:1px solid #d4c8e8;border-radius:3px;white-space:pre-wrap;word-break:break-word;font-size:0.82rem">${item.notes}</div>` : '',
-      `<b>Item Total:</b> ${val('$'+Number(item.price || 0).toFixed(2))}`,
-    ].filter(Boolean);
+    const W = doc.page.width - 72;
+    const COL = (W / 2) - 4;
+    let y = 36;
 
-    return `<div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:12px 14px;margin-bottom:10px;break-inside:avoid">
-      <div style="font-weight:700;color:#1a0a2e;font-size:.9rem;margin-bottom:8px;border-bottom:1px solid #d4c8e8;padding-bottom:5px">Item ${index + 1}</div>
-      ${lines.map(l => `<div style="font-size:0.82rem;color:#333;margin-bottom:4px;line-height:1.3">${l}</div>`).join('')}
-    </div>`;
-  };
+    // ── Header ──
+    doc.rect(36, y, W, 34).fill('#1a0a2e');
+    doc.fillColor('#c8a0f0').fontSize(14).font('Helvetica-Bold')
+       .text('COLUMBINE COPY & APPAREL', 44, y + 6, { width: W/2 });
+    doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
+       .text('419 N. 1st Street, Montrose, CO 81401  |  (970) 249-4418  |  ColumbineCopy.com', 44, y + 22, { width: W - 100 });
+    doc.fillColor('#9a8ab0').fontSize(7).font('Helvetica')
+       .text('ORDER', W - 30, y + 6, { width: 80, align: 'right' });
+    doc.fillColor('#c8a0f0').fontSize(13).font('Helvetica-Bold')
+       .text(orderId, W - 30, y + 16, { width: 80, align: 'right' });
+    y += 42;
 
-  const items = cartItems || [];
-  const gridRows = [];
-  for (let i = 0; i < items.length; i += 2) {
-    gridRows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
-      ${itemHtml(items[i], i)}
-      ${items[i+1] ? itemHtml(items[i+1], i+1) : '<div></div>'}
-    </div>`);
-  }
+    // ── Customer ──
+    doc.fillColor('#888').fontSize(7).font('Helvetica')
+       .text('CUSTOMER', 36, y);
+    y += 10;
+    doc.rect(36, y, W, 14).fill('#FFE500');
+    doc.fillColor('#000').fontSize(14).font('Helvetica-Bold')
+       .text(customer?.name || '—', 40, y + 1, { width: W - 8 });
+    y += 18;
+    doc.fillColor('#444').fontSize(8).font('Helvetica');
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    doc.text(`Email: ${customer?.email || '—'}`, 36, y, { continued: true, width: W/3 });
+    doc.text(`Phone: ${customer?.phone || '—'}`, { continued: true, width: W/3 });
+    doc.text(`Date: ${dateStr}`, { width: W/3 });
+    y += 12;
+    if (customer?.pickupName && customer.pickupName !== customer.name) {
+      doc.fillColor('#6b27b8').font('Helvetica-Bold').text(`Pickup Name: ${customer.pickupName}`, 36, y);
+      y += 12;
+    }
+    if (orderNotes) {
+      doc.fillColor('#555').font('Helvetica').fontSize(8).text(`Notes: ${orderNotes}`, 36, y, { width: W });
+      y += 12;
+    }
+    y += 4;
 
-  return `<div class="cca-work-order" style="font-family:Arial,sans-serif;font-size:10px;color:#333;max-width:700px">
-<style>
-  @media print {
-    body * { visibility: hidden !important; }
-    .cca-work-order, .cca-work-order * { visibility: visible !important; }
-    .cca-work-order { position: fixed; left: 0; top: 0; width: 100%; padding: 0.4in; }
-    @page { margin: 0.4in; size: letter; }
-  }
-</style>
-<div style="padding:0">
+    // ── Order Items in two-column grid ──
+    const items = cartItems || [];
+    for (let i = 0; i < items.length; i += 2) {
+      const leftItem = items[i];
+      const rightItem = items[i + 1];
 
-<div style="background:#1a0a2e;padding:14px 20px;border-radius:6px 6px 0 0">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <h1 style="color:#c8a0f0;font-size:1.2rem;margin:0">New Print Order</h1>
-      <p style="color:#9a8ab0;margin:4px 0 0;font-size:.85rem">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</p>
-    </div>
-  </div>
-</div>
+      const getLines = (item) => {
+        const lines = [
+          ['Format', item.format === 'large' ? 'Large Format' : 'Small Format'],
+          ['Size', sizeLabels[item.paperSize] || item.paperSize],
+          item.format === 'small' ? ['Paper', item.paperWeight] : ['Media', mediaLabels[item.mediaType] || item.mediaType],
+          ['Color', item.color === 'color' ? 'Full Color' : 'Black & White'],
+          item.sides ? ['Sides', item.sides === 'double' ? 'Double-sided' : 'Single-sided'] : null,
+          ['Pages', `${item.rangeStr || 'All Pages'}${item.totalPages ? ` (${item.totalPages} total)` : ''}`],
+          ['Copies', String(item.copies)],
+          ['Binding', item.binding ? (item.bindType ? item.bindType.charAt(0).toUpperCase()+item.bindType.slice(1) : 'Yes') : 'None'],
+          ['Lamination', item.lamination ? 'Yes' : 'No'],
+          item.holePunch ? ['Hole Punch', 'Yes'] : null,
+          item.notes ? ['Notes', item.notes] : null,
+          ['Item Total', `$${Number(item.price || 0).toFixed(2)}`],
+        ].filter(Boolean);
+        return lines;
+      };
 
-<div style="background:#fff;padding:16px 20px;border:1px solid #d4c8e8;border-top:none;border-radius:0 0 6px 6px;margin-bottom:12px">
-  <div style="background:#f4f0fb;border-radius:6px;padding:12px 16px;margin-bottom:14px;font-size:.88rem">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div><b>Name:</b> <span style="font-weight:700;color:#1a0a2e">${customer?.name || '—'}</span></div>
-      <div><b>Email:</b> <a href="mailto:${customer?.email}" style="color:#6b27b8">${customer?.email || '—'}</a></div>
-      <div><b>Pickup Name:</b> <span style="font-weight:700;color:#6b27b8;font-size:1rem">${customer?.pickupName || customer?.name || '—'}</span></div>
-      <div><b>Phone:</b> ${customer?.phone || '—'}</div>
-    </div>
-    ${orderNotes ? `<div style="margin-top:8px"><b>Order Notes:</b><div style="margin-top:4px;padding:6px 8px;background:#fff;border:1px solid #d4c8e8;border-radius:3px;white-space:pre-wrap;word-break:break-word">${orderNotes}</div></div>` : ''}
-  </div>
+      const drawItem = (item, x, startY, colW, index) => {
+        const lines = getLines(item);
+        const itemH = 14 + (lines.length * 11) + 4;
+        // header
+        doc.rect(x, startY, colW, 13).fill('#1a0a2e');
+        doc.fillColor('#fff').fontSize(7.5).font('Helvetica-Bold')
+           .text(`Item ${index + 1}: ${item.fileName}`, x + 3, startY + 3, { width: colW - 6, ellipsis: true });
+        let iy = startY + 14;
+        lines.forEach(([label, value], li) => {
+          doc.rect(x, iy, colW, 11).fill(li % 2 === 0 ? '#f4f0fb' : '#fff');
+          doc.fillColor('#666').fontSize(7).font('Helvetica')
+             .text(label + ':', x + 3, iy + 2, { width: 52 });
+          doc.fillColor('#1a0a2e').font('Helvetica-Bold')
+             .text(String(value), x + 57, iy + 2, { width: colW - 60 });
+          iy += 11;
+        });
+        doc.rect(x, startY, colW, iy - startY).stroke('#d4c8e8');
+        return iy - startY;
+      };
 
-  ${gridRows.join('')}
+      // Check if we need a new page
+      const leftH = 14 + (getLines(leftItem).length * 11) + 4;
+      const rightH = rightItem ? 14 + (getLines(rightItem).length * 11) + 4 : 0;
+      const rowH = Math.max(leftH, rightH) + 8;
+      if (y + rowH > doc.page.height - 80) {
+        doc.addPage();
+        y = 36;
+      }
 
-  <div style="background:#1a0a2e;border-radius:6px;padding:12px 16px;margin-top:8px">
-    <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:2px">Subtotal: $${subtotalAmount} &nbsp;·&nbsp; Tax (8.53%): $${taxAmount}</div>
-    <div style="color:#9a8ab0;font-size:.82rem;text-transform:uppercase;letter-spacing:1px">Total Paid</div>
-    <div style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</div>
-  </div>
-</div>
+      const lh = drawItem(leftItem, 36, y, COL, i);
+      const rh = rightItem ? drawItem(rightItem, 36 + COL + 8, y, COL, i + 1) : 0;
+      y += Math.max(lh, rh) + 8;
+    }
 
-</div></div>`;
+    // ── Status checkboxes ──
+    y += 4;
+    doc.rect(36, y, W, 18).stroke('#ccc');
+    doc.fillColor('#555').fontSize(7.5).font('Helvetica-Bold')
+       .text('STATUS:', 42, y + 5);
+    const statuses = ['In Queue', 'Printing', 'Finishing', 'Ready for Pickup'];
+    let sx = 100;
+    statuses.forEach(s => {
+      doc.rect(sx, y + 4, 9, 9).stroke('#333');
+      doc.fillColor('#333').font('Helvetica').text(s, sx + 12, y + 5);
+      sx += 80;
+    });
+    y += 26;
+
+    // ── Totals ──
+    doc.rect(36, y, W, 24).fill('#1a0a2e');
+    doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
+       .text(`Subtotal: $${subtotalAmount}   ·   Tax (8.53%): $${taxAmount}`, 42, y + 4);
+    doc.fillColor('#9a8ab0').fontSize(7).font('Helvetica')
+       .text('TOTAL PAID', W - 60, y + 4, { align: 'right', width: 80 });
+    doc.fillColor('#c8a0f0').fontSize(14).font('Helvetica-Bold')
+       .text(`$${totalAmount}`, W - 60, y + 11, { align: 'right', width: 80 });
+    y += 32;
+
+    // ── Footer ──
+    doc.fillColor('#999').fontSize(7).font('Helvetica')
+       .text('Columbine Copy & Apparel  ·  419 N. 1st Street, Montrose, CO 81401  ·  (970) 249-4418  ·  ColumbineCopy.com', 36, y, { align: 'center', width: W })
+       .text('All files are kept confidential and deleted after printing', 36, y + 9, { align: 'center', width: W });
+
+    doc.end();
+  });
 }
 
 
@@ -251,12 +311,21 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
   }
 
-  // ── Generate Work Order HTML (embedded in email) ─────────────────────────
-  const workOrderHtml = generateWorkOrderHTML(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
-  console.log('✅ Work order generated');
+  // ── Generate Work Order PDF via PDFKit ───────────────────────────────────
+  let workOrderPdfBase64 = null;
+  try {
+    const pdfBuffer = await generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
+    workOrderPdfBase64 = pdfBuffer.toString('base64');
+    console.log('✅ Work order PDF generated —', Math.round(pdfBuffer.length / 1024), 'KB');
+  } catch(e) {
+    console.error('Work order PDF failed:', e.message);
+  }
 
   // ── 2. Build PDF links and attachments ───────────────────────────────────
   const attachments = [];
+  if (workOrderPdfBase64) {
+    attachments.push({ filename: `WorkOrder-${orderId}.pdf`, content: workOrderPdfBase64 });
+  }
   const fileLinks = []; // Bytescale download links
   if (pdfFiles && pdfFiles.length > 0) {
     for (const f of pdfFiles) {
@@ -357,14 +426,6 @@ exports.handler = async function(event) {
         </div>
         <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
       </div>
-    </div>
-
-    <!-- PRINT DIVIDER -->
-    <div style="margin-top:24px;border-top:2px dashed #ccc;padding-top:16px">
-      <p style="font-size:11px;color:#999;text-align:center;margin-bottom:12px;font-style:italic">
-        ✂ &nbsp; Print the work order below — open this email, scroll here, then click Print &nbsp; ✂
-      </p>
-      ${workOrderHtml}
     </div>`,
     attachments,
     customer?.email || null  // Reply-To set to customer email
