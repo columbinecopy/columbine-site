@@ -189,27 +189,47 @@ function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, c
 
       const drawItem = (item, x, startY, colW, index) => {
         const lines = getLines(item);
-        const itemH = 14 + (lines.length * 11) + 4;
         // header
         doc.rect(x, startY, colW, 13).fill('#1a0a2e');
         doc.fillColor('#fff').fontSize(7.5).font('Helvetica-Bold')
            .text(`Item ${index + 1}: ${item.fileName}`, x + 3, startY + 3, { width: colW - 6, ellipsis: true });
         let iy = startY + 14;
         lines.forEach(([label, value], li) => {
-          doc.rect(x, iy, colW, 11).fill(li % 2 === 0 ? '#f4f0fb' : '#fff');
+          const strVal = String(value);
+          // Calculate how tall this row needs to be (notes may wrap)
+          const isNotes = label === 'Notes';
+          let rowH = 11;
+          if (isNotes) {
+            // Measure height needed for wrapped notes text
+            const textH = doc.heightOfString(strVal, { width: colW - 60, fontSize: 7 });
+            rowH = Math.max(11, textH + 6);
+          }
+          doc.rect(x, iy, colW, rowH).fill(li % 2 === 0 ? '#f4f0fb' : '#fff');
           doc.fillColor('#666').fontSize(7).font('Helvetica')
              .text(label + ':', x + 3, iy + 2, { width: 52 });
           doc.fillColor('#1a0a2e').font('Helvetica-Bold')
-             .text(String(value), x + 57, iy + 2, { width: colW - 60 });
-          iy += 11;
+             .text(strVal, x + 57, iy + 2, { width: colW - 60 });
+          iy += rowH;
         });
         doc.rect(x, startY, colW, iy - startY).stroke('#d4c8e8');
         return iy - startY;
       };
 
-      // Check if we need a new page
-      const leftH = 14 + (getLines(leftItem).length * 11) + 4;
-      const rightH = rightItem ? 14 + (getLines(rightItem).length * 11) + 4 : 0;
+      // Check if we need a new page — estimate height including notes wrapping
+      const estimateH = (item) => {
+        const lines = getLines(item);
+        let h = 14;
+        lines.forEach(([label, value]) => {
+          if (label === 'Notes') {
+            h += Math.max(11, doc.heightOfString(String(value), { width: COL - 60, fontSize: 7 }) + 6);
+          } else {
+            h += 11;
+          }
+        });
+        return h + 4;
+      };
+      const leftH = estimateH(leftItem);
+      const rightH = rightItem ? estimateH(rightItem) : 0;
       const rowH = Math.max(leftH, rightH) + 8;
       if (y + rowH > doc.page.height - 80) {
         doc.addPage();
