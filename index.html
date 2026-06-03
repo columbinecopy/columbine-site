@@ -1084,7 +1084,7 @@ function updateAddToCartBtn() {
 }
 
 // ---- CART OPERATIONS ----
-function addToCart() {
+async function addToCart() {
   if (!currentFile || !currentFormat) return;
   // Require color selection for both formats
   if (currentFormat === 'small') {
@@ -1098,6 +1098,28 @@ function addToCart() {
       alert('Please select Black & White or Color before adding to cart.');
       return;
     }
+  }
+  // Upload to Bytescale immediately when adding to cart
+  const tracked = (window.uploadedFiles||[]).find(f => f.name === currentFile.name);
+  if (tracked && tracked.file && !tracked.bytescaleUrl) {
+    try {
+      document.getElementById('addToCartBtn').textContent = '⬆ Uploading...';
+      document.getElementById('addToCartBtn').disabled = true;
+      if (typeof Bytescale !== 'undefined') {
+        const uploadManager = new Bytescale.UploadManager({ apiKey: BYTESCALE_API_KEY });
+        const { fileUrl } = await uploadManager.upload({
+          data: tracked.file,
+          mime: 'application/pdf',
+          originalFileName: tracked.name,
+        });
+        tracked.bytescaleUrl = fileUrl;
+        console.log('✅ Pre-uploaded to Bytescale:', tracked.name, fileUrl);
+      }
+    } catch(e) {
+      console.warn('Pre-upload failed, will retry at checkout:', e.message);
+    }
+    document.getElementById('addToCartBtn').textContent = editingIndex >= 0 ? '💾 Save Changes' : '➕ Add to Cart';
+    document.getElementById('addToCartBtn').disabled = false;
   }
   // Require binding selection for both formats
   if (currentFormat === 'small') {
