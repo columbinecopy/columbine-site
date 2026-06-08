@@ -763,16 +763,40 @@ uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('dragov
 uploadZone.addEventListener('drop', e=>{ e.preventDefault(); uploadZone.classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f&&f.type==='application/pdf') loadSingleFile(f); });
 fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) loadSingleFile(fileInput.files[0]); fileInput.value=''; });
 
-function loadSingleFile(file) {
+async function loadSingleFile(file) {
   currentFile = { file, name:file.name, size:file.size, pageCount:null, pdfDoc:null, detectedSize:null };
-  // No size warning — large files are handled gracefully at checkout
   // Track file objects so we can read them at checkout
   if (!window.uploadedFiles) window.uploadedFiles = [];
   window.uploadedFiles = window.uploadedFiles.filter(f => f.name !== file.name);
-  window.uploadedFiles.push({ name: file.name, file: file });
+  const fileEntry = { name: file.name, file: file, bytescaleUrl: null };
+  window.uploadedFiles.push(fileEntry);
   renderCurrentFile();
   updateAddToCartBtn();
   processPDF(currentFile);
+  // Upload to Bytescale immediately on file load
+  try {
+    if (typeof Bytescale !== 'undefined') {
+      console.log('Auto-uploading to Bytescale:', file.name);
+      const uploadManager = new Bytescale.UploadManager({ apiKey: BYTESCALE_API_KEY });
+      const { fileUrl } = await uploadManager.upload({
+        data: file,
+        mime: 'application/pdf',
+        originalFileName: file.name,
+        onProgress: ({ progress }) => {
+          const area = document.getElementById('currentFileArea');
+          const indicator = document.getElementById('uploadIndicator');
+          if (indicator) indicator.textContent = '⬆ Uploading to cloud... ' + progress + '%';
+        },
+      });
+      fileEntry.bytescaleUrl = fileUrl;
+      console.log('✅ Auto-uploaded to Bytescale:', file.name, fileUrl);
+      const indicator = document.getElementById('uploadIndicator');
+      if (indicator) indicator.textContent = '✅ File ready';
+      setTimeout(() => { const el = document.getElementById('uploadIndicator'); if(el) el.textContent = ''; }, 3000);
+    }
+  } catch(e) {
+    console.warn('Auto-upload failed, will retry at checkout:', e.message);
+  }
 }
 
 async function processPDF(entry) {
@@ -815,7 +839,7 @@ function renderCurrentFile() {
   const sizeLabel = currentFile.detectedSize
     ? '<span class="size-badge">📐 '+currentFile.detectedSize.name+'</span>' : '';
   const hasPages = currentFile.pageCount && currentFile.pageCount!=='?';
-  area.innerHTML = '<div class="current-file">'
+  area.innerHTML = '<div id="uploadIndicator" style="font-size:.78rem;color:#6b27b8;font-weight:600;margin-bottom:.3rem;min-height:1.2em"></div><div class="current-file">'
     +'<div class="file-thumb-wrap" id="thumbWrap" onclick="togglePreview()" title="Preview">'
     +(currentFile.thumbCanvas ? '' : '<span style="font-size:1.4rem">📄</span>')
     +'</div>'
@@ -1366,14 +1390,15 @@ async function handlePayment(){
     status.textContent = 'Uploading files...';
     for (const item of cart) {
       const tracked = (window.uploadedFiles||[]).find(f=>f.name===item.fileName);
-      if (tracked && tracked.file) {
+      if (tracked) {
+        // If already uploaded to Bytescale, just use the URL — no need for file object
+        if (tracked.bytescaleUrl) {
+          pdfFiles.push({ name: tracked.name, url: tracked.bytescaleUrl });
+          console.log('✅ Already uploaded:', tracked.name);
+          continue;
+        }
+        if (tracked.file) {
         try {
-          // Check if already uploaded to Bytescale
-          if (tracked.bytescaleUrl) {
-            pdfFiles.push({ name: tracked.name, url: tracked.bytescaleUrl });
-            console.log('✅ Already uploaded:', tracked.name);
-            continue;
-          }
           // Check Bytescale SDK is loaded
           if (typeof Bytescale === 'undefined') {
             throw new Error('Bytescale SDK not loaded');
@@ -1406,7 +1431,8 @@ async function handlePayment(){
               console.warn('File too large for base64 fallback:', tracked.name);
             }
           } catch(e2) { console.warn('Could not read:', item.fileName, e2); }
-        }
+          }
+        } // end if tracked.file
       }
     }
     status.textContent = 'Processing payment...';
