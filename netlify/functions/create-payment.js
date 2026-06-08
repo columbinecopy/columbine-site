@@ -152,14 +152,22 @@ function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, c
        .text(pickupName, 40, y + 1, { width: W - 8 });
     y += 20;
     doc.fillColor('#444').fontSize(8).font('Helvetica');
-    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const dateStr = new Date().toLocaleString('en-US', { timeZone: 'America/Denver', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     doc.text(`Email: ${customer?.email || '—'}`, 36, y, { continued: true, width: W/3 });
     doc.text(`Phone: ${customer?.phone || '—'}`, { continued: true, width: W/3 });
     doc.text(`Date: ${dateStr}`, { width: W/3 });
     y += 12;
     if (orderNotes) {
-      doc.fillColor('#555').font('Helvetica').fontSize(8).text(`Notes: ${orderNotes}`, 36, y, { width: W });
-      y += 12;
+      y += 3;
+      doc.fillColor('#555').font('Helvetica-Bold').fontSize(8).text('Order Notes:', 36, y);
+      y += 11;
+      const notesHeight = doc.heightOfString(orderNotes, { width: W - 8, fontSize: 8 });
+      const notesBoxH = notesHeight + 10;
+      doc.rect(36, y, W, notesBoxH).fill('#f4f0fb');
+      doc.rect(36, y, W, notesBoxH).stroke('#d4c8e8');
+      doc.fillColor('#333').font('Helvetica').fontSize(8)
+         .text(orderNotes, 40, y + 5, { width: W - 8 });
+      y += notesBoxH + 4;
     }
     y += 4;
 
