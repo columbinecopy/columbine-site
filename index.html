@@ -1356,7 +1356,7 @@ let squareCard=null;
 
 async function initSquare(){
   if(!window.Square){
-    document.getElementById('payment-status').textContent='Square.js failed to load — please refresh and try again.';
+    document.getElementById('payment-status').innerHTML='⚠️ Payment form could not load. This is usually caused by an ad blocker or privacy extension. Please try: (1) disabling ad blockers for this site, (2) using a different browser like Chrome or Firefox, or (3) calling us directly at <a href="tel:9702494418" style="color:#c8a0f0">(970) 249-4418</a> to place your order.';
     return;
   }
   let payments;
@@ -1364,7 +1364,7 @@ async function initSquare(){
     payments=window.Square.payments(SQUARE_APP_ID,SQUARE_LOCATION_ID);
   }catch(e){
     console.error('Square.payments() failed:',e);
-    document.getElementById('payment-status').textContent='Payment setup error: '+e.message+' (check App ID and Location ID)';
+    document.getElementById('payment-status').innerHTML='⚠️ Payment form could not load. Please try a different browser or disable ad blockers, or call us at <a href="tel:9702494418" style="color:#c8a0f0">(970) 249-4418</a>.';
     return;
   }
   try{
@@ -1374,7 +1374,7 @@ async function initSquare(){
     document.getElementById('payment-status').textContent='';
   }catch(e){
     console.error('Square card init failed:',e);
-    document.getElementById('payment-status').textContent='Card form error: '+e.message;
+    document.getElementById('payment-status').innerHTML='⚠️ Payment form could not load. Please try a different browser or disable ad blockers, or call us at <a href="tel:9702494418" style="color:#c8a0f0">(970) 249-4418</a>.';
   }
 }
 
@@ -1477,7 +1477,15 @@ function showPayment(){
   document.getElementById('checkoutBtn').style.display='none';
   document.getElementById('paymentSection').style.display='block';
   document.getElementById('card-button').disabled=false;
-  initSquare();
+  document.getElementById('payment-status').textContent='Loading payment form...';
+  // Give Square's SDK a moment to load, then check
+  setTimeout(() => {
+    if (!window.Square) {
+      document.getElementById('payment-status').innerHTML='⚠️ Payment form could not load. This is usually caused by an ad blocker or privacy extension. Please try: (1) disabling ad blockers for this site, (2) using a different browser like Chrome or Firefox, or (3) calling us directly at <a href="tel:9702494418" style="color:#c8a0f0">(970) 249-4418</a> to place your order.';
+      return;
+    }
+    initSquare();
+  }, 800);
 }
 
 function closeModal(){
