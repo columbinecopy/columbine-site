@@ -9,6 +9,23 @@ const { randomUUID } = require('crypto');
 const https = require('https');
 const PDFDocument = require('pdfkit');
 
+// ── CORS: allow the main marketing site + print portal to call this function ───
+const ALLOWED_ORIGINS = [
+  'https://www.columbinecopy.com',
+  'https://columbinecopy.com',
+  'https://print.columbinecopy.com',
+];
+
+function corsHeaders(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
+
 // ── HTTPS helper ──────────────────────────────────────────────────────────────
 function httpsRequest(options, body) {
   return new Promise((resolve, reject) => {
@@ -89,6 +106,47 @@ function formatCartItem(item, index) {
     item.holePunch ? `<b>Hole Punch:</b> ${val('✅ Yes')}` : '',
     item.notes ? `<b>Notes:</b><div style="margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #d4c8e8;border-radius:4px;white-space:pre-wrap;word-break:break-word">${item.notes}</div>` : '',
     `<b>Item Total:</b> ${val('$'+Number(item.price || 0).toFixed(2))}`,
+  ].filter(Boolean);
+
+  return `
+    <div style="background:#f4f0fb;border:1px solid #d4c8e8;border-radius:6px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-weight:700;color:#1a0a2e;font-size:.9rem;margin-bottom:8px;border-bottom:1px solid #d4c8e8;padding-bottom:5px">Item ${index + 1}</div>
+      ${lines.map(l => `<div style="font-size:0.82rem;color:#333;margin-bottom:4px;line-height:1.3">${l}</div>`).join('')}
+    </div>`;
+}
+
+// ── Format apparel/shop cart item for email ────────────────────────────────────
+function formatShopCartItem(item, index) {
+  const val = (v) => `<span style="font-weight:700;color:#1a0a2e">${v}</span>`;
+  const methodLabel = (m) => m === 'sp' ? 'Screen Printed Inks' : 'Full Color';
+  const sizeLabel = (s) => ({ small: 'Small', medium: 'Medium', large: 'Large' }[s] || s || 'Medium');
+
+  const sides = item.sides || {};
+  const sideLines = ['front', 'back'].map(side => {
+    const s = sides[side];
+    if (!s) return '';
+    const label = side.charAt(0).toUpperCase() + side.slice(1);
+    if (s.noPrint || !s.hasArtwork) return `<b>${label}:</b> ${val('No print')}`;
+    const badFlag = s.artBad ? ' ⚠️ <span style="color:#b71c1c">(low-res — art fee applied)</span>' : '';
+    return `<b>${label}:</b> ${val(methodLabel(s.method))} — ${val(sizeLabel(s.size))}${badFlag}`;
+  }).filter(Boolean);
+
+  const qtyBreakdown = item.qtyBreakdown || {};
+  const qtyStr = Object.entries(qtyBreakdown).map(([size, qty]) => `${qty}×${size}`).join(', ') || '—';
+
+  const artLinks = [];
+  if (item.frontUrl) artLinks.push(`<a href="${item.frontUrl}" style="color:#6b27b8;font-weight:600">📎 Front Artwork</a>`);
+  if (item.backUrl) artLinks.push(`<a href="${item.backUrl}" style="color:#6b27b8;font-weight:600">📎 Back Artwork</a>`);
+
+  const lines = [
+    `<b>Garment:</b> ${val(`${item.productId || ''} — ${item.productName || ''}`)} ${item.brand ? `<span style="color:#888;font-size:.78rem">(${item.brand})</span>` : ''}`,
+    `<b>Color:</b> ${val(item.color || '—')}`,
+    ...sideLines,
+    `<b>Quantity:</b> ${val(qtyStr)} <span style="color:#888">(${item.totalQty || 0} total)</span>`,
+    item.upchargeTotal > 0 ? `<b>Size Upcharges:</b> ${val('$' + Number(item.upchargeTotal).toFixed(2))}` : '',
+    artLinks.length ? `<b>Artwork:</b> ${artLinks.join(' &nbsp;·&nbsp; ')}` : '<b>Artwork:</b> <span style="color:#b71c1c">⚠ none uploaded</span>',
+    item.notes ? `<b>Notes:</b><div style="margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #d4c8e8;border-radius:4px;white-space:pre-wrap;word-break:break-word">${item.notes}</div>` : '',
+    `<b>Item Total:</b> ${val('$' + Number(item.itemTotal || 0).toFixed(2))}`,
   ].filter(Boolean);
 
   return `
@@ -282,216 +340,116 @@ function generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, c
   });
 }
 
+// ── Generate Apparel Work Order PDF using PDFKit ────────────────────────────
+function generateShopWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 36, size: 'letter' });
+    const buffers = [];
+    doc.on('data', chunk => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
 
-// ── Main handler ──────────────────────────────────────────────────────────────
-exports.handler = async function(event) {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
+    const methodLabel = (m) => m === 'sp' ? 'Screen Printed Inks' : 'Full Color';
+    const sizeLabel = (s) => ({ small: 'Small', medium: 'Medium', large: 'Large' }[s] || s || 'Medium');
 
-  let body;
-  try { body = JSON.parse(event.body); }
-  catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) }; }
+    const W = doc.page.width - 72;
+    let y = 36;
 
-  const { sourceId, amountCents, currency, customer, cartItems, orderNotes, pdfFiles } = body;
+    // ── Header ──
+    doc.rect(36, y, W, 34).fill('#1a0a2e');
+    doc.fillColor('#c8a0f0').fontSize(14).font('Helvetica-Bold')
+       .text('COLUMBINE COPY & APPAREL', 44, y + 6, { width: W/2 });
+    doc.fillColor('#9a8ab0').fontSize(8).font('Helvetica')
+       .text('419 N. 1st Street, Montrose, CO 81401  |  (970) 249-4418  |  ColumbineCopy.com', 44, y + 22, { width: W - 100 });
+    doc.fillColor('#9a8ab0').fontSize(7).font('Helvetica')
+       .text('APPAREL ORDER', 44, y + 6, { align: 'right', width: W - 8 });
+    doc.fillColor('#c8a0f0').fontSize(11).font('Helvetica-Bold')
+       .text(orderId, 44, y + 17, { align: 'right', width: W - 8 });
+    y += 42;
 
-  console.log('Payment request — amountCents:', amountCents, 'files:', pdfFiles?.length || 0, 'cartItems:', cartItems?.length || 0);
-  if (!cartItems || cartItems.length === 0) {
-    console.log('WARNING: cartItems is empty or missing');
-  }
-
-  if (!sourceId) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing payment token.' }) };
-  }
-  if (!amountCents || isNaN(amountCents) || amountCents < 1) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid order amount.' }) };
-  }
-
-  const finalAmount = Math.max(Number(amountCents), 100);
-  const totalAmount = (finalAmount / 100).toFixed(2);
-  const subtotalAmount = (finalAmount / 100 / 1.0853).toFixed(2);
-  const taxAmount = ((finalAmount / 100) - (finalAmount / 100 / 1.0853)).toFixed(2);
-  const orderId = 'CCA-' + Math.floor(100000 + Math.random() * 900000);
-
-  // ── 1. Charge via Square ──────────────────────────────────────────────────
-  const squareClient = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN,
-    environment: process.env.NODE_ENV === 'production'
-      ? Environment.Production : Environment.Sandbox,
-  });
-
-  let payment;
-  try {
-    const response = await squareClient.paymentsApi.createPayment({
-      sourceId,
-      idempotencyKey: randomUUID(),
-      amountMoney: { amount: BigInt(finalAmount), currency: currency || 'USD' },
-      locationId: process.env.SQUARE_LOCATION_ID,
-      referenceId: orderId,
-      note: `Columbine Print Order ${orderId} — ${customer?.name || 'Customer'}`,
-      buyerEmailAddress: customer?.email,
-    });
-    payment = response.result.payment;
-    console.log(`✅ Payment success — ${orderId} — $${totalAmount}`);
-
-    } catch(error) {
-    if (error instanceof ApiError) {
-      const msg = error.errors?.map(e => e.detail).join('; ') || 'Payment failed.';
-      console.error('Square error:', msg);
-      return { statusCode: 402, body: JSON.stringify({ success: false, error: msg }) };
+    // ── Customer ──
+    doc.fillColor('#888').fontSize(7).font('Helvetica')
+       .text('CUSTOMER', 36, y);
+    y += 10;
+    doc.fillColor('#1a0a2e').fontSize(13).font('Helvetica-Bold')
+       .text(customer?.name || '—', 36, y);
+    y += 16;
+    const pickupName = customer?.pickupName || customer?.name || '—';
+    doc.fillColor('#555').fontSize(7.5).font('Helvetica')
+       .text('PICKUP NAME', 36, y);
+    y += 9;
+    doc.rect(36, y, W, 15).fill('#FFE500');
+    doc.fillColor('#000').fontSize(13).font('Helvetica-Bold')
+       .text(pickupName, 40, y + 1, { width: W - 8 });
+    y += 20;
+    doc.fillColor('#444').fontSize(8).font('Helvetica');
+    const dateStr = new Date().toLocaleString('en-US', { timeZone: 'America/Denver', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    doc.text(`Email: ${customer?.email || '—'}`, 36, y, { continued: true, width: W/3 });
+    doc.text(`Phone: ${customer?.phone || '—'}`, { continued: true, width: W/3 });
+    doc.text(`Date: ${dateStr}`, { width: W/3 });
+    y += 12;
+    if (orderNotes) {
+      y += 3;
+      doc.fillColor('#555').font('Helvetica-Bold').fontSize(8).text('Order Notes:', 36, y);
+      y += 11;
+      const notesHeight = doc.heightOfString(orderNotes, { width: W - 8, fontSize: 8 });
+      const notesBoxH = notesHeight + 10;
+      doc.rect(36, y, W, notesBoxH).fill('#f4f0fb');
+      doc.rect(36, y, W, notesBoxH).stroke('#d4c8e8');
+      doc.fillColor('#333').font('Helvetica').fontSize(8)
+         .text(orderNotes, 40, y + 5, { width: W - 8 });
+      y += notesBoxH + 4;
     }
-    console.error('Payment error:', error);
-    return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Payment failed. Please try again.' }) };
-  }
+    y += 4;
 
-  // ── Generate Work Order PDF via PDFKit ───────────────────────────────────
-  let workOrderPdfBase64 = null;
-  try {
-    const pdfBuffer = await generateWorkOrderPDF(orderId, totalAmount, subtotalAmount, taxAmount, customer, cartItems, orderNotes);
-    workOrderPdfBase64 = pdfBuffer.toString('base64');
-    console.log('✅ Work order PDF generated —', Math.round(pdfBuffer.length / 1024), 'KB');
-  } catch(e) {
-    console.error('Work order PDF failed:', e.message);
-  }
+    // ── Order Items (single column — apparel items carry more detail per row) ──
+    const items = cartItems || [];
+    items.forEach((item, index) => {
+      const sides = item.sides || {};
+      const qtyBreakdown = item.qtyBreakdown || {};
+      const qtyStr = Object.entries(qtyBreakdown).map(([size, qty]) => `${qty}×${size}`).join(', ') || '—';
 
-  // ── 2. Build PDF links and attachments ───────────────────────────────────
-  const attachments = [];
-  if (workOrderPdfBase64) {
-    attachments.push({ filename: `WorkOrder-${orderId}.pdf`, content: workOrderPdfBase64 });
-  }
-  const fileLinks = []; // Bytescale download links
-  if (pdfFiles && pdfFiles.length > 0) {
-    for (const f of pdfFiles) {
-      if (f.url) {
-        // Bytescale URL — add as a download link in the email
-        fileLinks.push({ name: f.name, url: f.url });
-        console.log(`✅ Bytescale link: ${f.name} → ${f.url}`);
-      } else if (f.data && !f.tooLarge) {
-        // Small file base64 fallback — attach directly
-        try {
-          const clean = f.data.replace(/^data:[^;]+;base64,/, '');
-          attachments.push({ filename: f.name, content: clean });
-          console.log(`✅ Attached: ${f.name}`);
-        } catch(e) {
-          console.error(`Could not attach ${f.name}:`, e.message);
-        }
-      } else {
-        console.log(`⚠️ File unavailable: ${f.name}`);
+      const lines = [
+        ['Garment', `${item.productId || ''} — ${item.productName || ''}${item.brand ? ` (${item.brand})` : ''}`],
+        ['Color', item.color || '—'],
+        ['Front', sides.front && sides.front.hasArtwork && !sides.front.noPrint
+          ? `${methodLabel(sides.front.method)} — ${sizeLabel(sides.front.size)}${sides.front.artBad ? '  [LOW-RES — ART FEE]' : ''}`
+          : 'No print'],
+        ['Back', sides.back && sides.back.hasArtwork && !sides.back.noPrint
+          ? `${methodLabel(sides.back.method)} — ${sizeLabel(sides.back.size)}${sides.back.artBad ? '  [LOW-RES — ART FEE]' : ''}`
+          : 'No print'],
+        ['Quantity', `${qtyStr}  (${item.totalQty || 0} total)`],
+        item.upchargeTotal > 0 ? ['Size Upcharges', `$${Number(item.upchargeTotal).toFixed(2)}`] : null,
+        ['Front Artwork', item.frontUrl || 'none uploaded'],
+        ['Back Artwork', item.backUrl || 'none uploaded'],
+        item.notes ? ['Notes', item.notes] : null,
+        ['Item Total', `$${Number(item.itemTotal || 0).toFixed(2)}`],
+      ].filter(Boolean);
+
+      // Estimate row heights (long URLs / notes may wrap)
+      let rowsH = 14;
+      lines.forEach(([label, value]) => {
+        const wrap = ['Notes', 'Front Artwork', 'Back Artwork'].includes(label);
+        rowsH += wrap ? Math.max(11, doc.heightOfString(String(value), { width: W - 130, fontSize: 7.5 }) + 6) : 11;
+      });
+      rowsH += 4;
+
+      if (y + rowsH > doc.page.height - 80) {
+        doc.addPage();
+        y = 36;
       }
-    }
-  }
 
-  // Build cart HTML in two-column grid layout
-  // Page 1: customer info + 4 items (2 columns x 2 rows)
-  // Page 2+: 6 items per page (2 columns x 3 rows)
-  const items = cartItems || [];
-  
-  const buildGrid = (itemsSlice, startIndex) => {
-    const rows = [];
-    for (let i = 0; i < itemsSlice.length; i += 2) {
-      const left = itemsSlice[i] ? formatCartItem(itemsSlice[i], startIndex + i) : '';
-      const right = itemsSlice[i+1] ? formatCartItem(itemsSlice[i+1], startIndex + i + 1) : '<div></div>';
-      rows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">${left}${right}</div>`);
-    }
-    return rows.join('');
-  };
-
-  // Page 1 gets first 4 items, subsequent pages get 6 items each
-  const page1Items = items.slice(0, 4);
-  const remainingItems = items.slice(4);
-  
-  let cartHtml = buildGrid(page1Items, 0);
-  
-  // Add extra pages if needed
-  for (let p = 0; p < remainingItems.length; p += 6) {
-    const pageItems = remainingItems.slice(p, p + 6);
-    cartHtml += `<div style="page-break-before:always;margin-top:20px">
-      <div style="background:#1a0a2e;padding:12px 20px;border-radius:6px 6px 0 0;margin-bottom:10px">
-        <p style="color:#9a8ab0;margin:0;font-size:.85rem">Order ${orderId} — continued</p>
-      </div>
-      ${buildGrid(pageItems, 4 + p)}
-    </div>`;
-  }
-
-  // ── 3. Email owner with PDF attachments ───────────────────────────────────
-  await sendEmail(
-    process.env.OWNER_EMAIL,
-    `🖨 New Print Order ${orderId} — $${totalAmount} — ${customer?.name}`,
-    `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0">
-        <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">New Print Order</h1>
-        <p style="color:#9a8ab0;margin:6px 0 0">Order ${orderId} &nbsp;·&nbsp; $${totalAmount} paid</p>
-      </div>
-      <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none">
-        <h2 style="color:#1a0a2e;font-size:1rem;margin:0 0 10px">Customer</h2>
-        <div style="background:#f4f0fb;border-radius:6px;padding:16px 20px;margin-bottom:20px;font-size:.95rem">
-          <div style="margin-bottom:6px"><b>Name:</b> <span style="font-weight:700;color:#1a0a2e">${customer?.name || '—'}</span></div>
-          <div style="margin-bottom:6px"><b>Pickup Name:</b> <span style="font-weight:700;color:#6b27b8;font-size:1.05rem">${customer?.pickupName || customer?.name || '—'}</span></div>
-          <div style="margin-bottom:6px"><b>Email:</b> <a href="mailto:${customer?.email}" style="color:#6b27b8;font-weight:500">${customer?.email || '—'}</a></div>
-          <div style="margin-bottom:6px"><b>Phone:</b> ${customer?.phone || '—'}</div>
-          ${orderNotes ? `<div style="margin-top:8px"><b>Order Notes:</b><div style="margin-top:4px;padding:8px 10px;background:#fff;border:1px solid #d4c8e8;border-radius:4px;white-space:pre-wrap;word-break:break-word">${orderNotes}</div></div>` : ''}
-        </div>
-        ${fileLinks.length > 0 ? `
-          <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px 16px;margin-bottom:16px">
-            <div style="color:#2e7d32;font-size:.88rem;font-weight:700;margin-bottom:8px">📎 PDF Download Links</div>
-            ${fileLinks.map(f => `<div style="margin-bottom:6px;font-size:.88rem">
-              📄 <a href="${f.url}" style="color:#6b27b8;font-weight:600">${f.name}</a>
-              &nbsp;—&nbsp; <a href="${f.url}" style="color:#6b27b8">⬇ Download</a>
-            </div>`).join('')}
-          </div>` : ''}
-        ${attachments.length > 0 ? `
-          <p style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:12px;color:#2e7d32;font-size:.88rem">
-            📎 ${attachments.length} PDF file${attachments.length > 1 ? 's' : ''} attached to this email
-          </p>` : ''}
-        ${fileLinks.length === 0 && attachments.length === 0 ? `
-          <p style="background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:12px;color:#e65100;font-size:.88rem">
-            ⚠ No PDF files received — please follow up with the customer
-          </p>` : ''}
-        <h2 style="color:#1a0a2e;font-size:1rem;margin:16px 0 10px">Order Details</h2>
-        ${cartHtml}
-        <div style="background:#1a0a2e;border-radius:6px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-          <div>
-            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:2px">Subtotal: $${subtotalAmount}</div>
-            <div style="color:#9a8ab0;font-size:.78rem;margin-bottom:6px">Tax (8.53%): $${taxAmount}</div>
-            <div style="color:#9a8ab0;font-size:.85rem;text-transform:uppercase;letter-spacing:1px">Total Paid</div>
-            <div style="color:#c8a0f0;font-size:1.5rem;font-weight:700">$${totalAmount}</div>
-          </div>
-        </div>
-        <p style="color:#999;font-size:.78rem;margin-top:16px">Payment ID: ${payment.id}</p>
-      </div>
-    </div>`,
-    attachments,
-    customer?.email || null  // Reply-To set to customer email
-  );
-
-  // ── 4. Email customer confirmation ────────────────────────────────────────
-  if (customer?.email) {
-    await sendEmail(
-      customer.email,
-      `Your print order is confirmed — ${orderId}`,
-      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <div style="background:#1a0a2e;padding:24px;border-radius:6px 6px 0 0;text-align:center">
-          <h1 style="color:#c8a0f0;font-size:1.4rem;margin:0">Order Confirmed!</h1>
-          <p style="color:#9a8ab0;margin:6px 0 0">Columbine Copy & Apparel</p>
-        </div>
-        <div style="background:#fff;padding:24px;border:1px solid #d4c8e8;border-top:none;text-align:center">
-          <p style="color:#333">Hi ${customer.name?.split(' ')[0] || 'there'},</p>
-          <p style="color:#555;font-size:.9rem">Thank you for your order! We have received your payment and will begin processing your print job shortly.</p>
-          <div style="background:#f4f0fb;border-radius:6px;padding:16px;margin:20px 0;display:inline-block">
-            <div style="color:#6e5a8a;font-size:.78rem;text-transform:uppercase;letter-spacing:1px">Order Reference</div>
-            <div style="color:#1a0a2e;font-size:1.4rem;font-weight:700;font-family:monospace;letter-spacing:2px">${orderId}</div>
-          </div>
-          <p style="color:#333">Total paid: <b>$${totalAmount}</b></p>
-          <p style="color:#555;font-size:.88rem">Your order will be printed during normal business hours and you will be notified by email once it is ready for pickup — usually within 30 minutes.</p>
-          <p style="color:#999;font-size:.78rem;margin-top:24px">Columbine Copy & Apparel · All files are kept confidential and deleted after printing</p>
-        </div>
-      </div>`
-    );
-  }
-
-  return {
-    statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ success: true, orderId, paymentId: payment.id }),
-  };
-};
+      doc.rect(36, y, W, 13).fill('#1a0a2e');
+      doc.fillColor('#fff').fontSize(8).font('Helvetica-Bold')
+         .text(`Item ${index + 1}`, 40, y + 3, { width: W - 8 });
+      let iy = y + 14;
+      lines.forEach(([label, value], li) => {
+        const wrap = ['Notes', 'Front Artwork', 'Back Artwork'].includes(label);
+        const strVal = String(value);
+        let rowH = 11;
+        if (wrap) rowH = Math.max(11, doc.heightOfString(strVal, { width: W - 130, fontSize: 7.5 }) + 6);
+        doc.rect(36, iy, W, rowH).fill(li % 2 === 0 ? '#f4f0fb' : '#fff');
+        doc.fillColor('#666').fontSize(7.5).font('Helvetica')
+           .text(label + ':', 40, iy + 2, { width: 90 });
+        doc.fillColor('#1a0a2e').font('Helvetica-Bold')
+           .text(strVal, 1
