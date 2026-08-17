@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shipping Counter — Columbine Copy & Apparel</title>
+<style>
+  :root {
+    --ink: #1c1f26;
+    --paper: #f7f5f1;
+    --card: #ffffff;
+    --line: #dcd7cd;
+    --accent: #2f5233; /* deep pine — matches a print-shop/outdoors CO feel */
+    --accent-dark: #203a24;
+    --warn: #b3441e;
+    --muted: #6b6558;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+  }
+  header p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  input {
+    font-size: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fdfcfa;
+    color: var(--ink);
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47,82,51,0.12);
+  }
+  .dims-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  button {
+    font-size: 17px;
+    font-weight: 600;
+    padding: 16px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    margin-top: 18px;
+  }
+  .btn-primary:active { background: var(--accent-dark); }
+  .btn-primary:disabled { background: #a9a49a; cursor: default; }
+  .rates {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rate-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fdfcfa;
+  }
+  .rate-option.selected {
+    border-color: var(--accent);
+    background: #eef3ee;
+  }
+  .rate-info .service { font-weight: 700; font-size: 16px; }
+  .rate-info .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .rate-price { font-size: 20px; font-weight: 700; color: var(--accent-dark); }
+  .radio-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  .rate-option.selected .radio-dot {
+    border-color: var(--accent);
+    background: radial-gradient(var(--accent) 0 40%, transparent 42%);
+  }
+  .rate-row { display: flex; align-items: center; }
+  .status-msg {
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+  }
+  .status-msg.error { background: #fbe9e3; color: var(--warn); }
+  .status-msg.success { background: #e8f0e9; color: var(--accent-dark); }
+  .hidden { display: none; }
+  .label-link {
+    display: block;
+    text-align: center;
+    background: var(--accent-dark);
+    color: #fff;
+    text-decoration: none;
+    padding: 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    margin-top: 12px;
+  }
+  .tracking {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: center;
+  }
+  .print-note {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Shipping Counter</h1>
+  <p>Columbine Copy &amp; Apparel — 419 N. 1st Street, Montrose, CO</p>
+</header>
+
+<main>
+
+  <div class="card" id="input-card">
+    <h2>Destination &amp; Package</h2>
+    <div class="grid">
+      <div class="field full">
+        <label for="destZip">Destination ZIP code</label>
+        <input type="text" id="destZip" inputmode="numeric" placeholder="e.g. 90028" maxlength="5">
+      </div>
+      <div class="field full">
+        <label for="destName">Customer name (optional)</label>
+        <input type="text" id="destName" placeholder="For the label">
+      </div>
+      <div class="field full">
+        <label for="destStreet1">Street address (optional — improves accuracy)</label>
+        <input type="text" id="destStreet1" placeholder="Optional">
+      </div>
+      <div class="field">
+        <label for="destCity">City (optional)</label>
+        <input type="text" id="destCity" placeholder="Optional">
+      </div>
+      <div class="field">
+        <label for="destState">State (optional)</label>
+        <input type="text" id="destState" placeholder="e.g. CA" maxlength="2">
+      </div>
+      <div class="field full">
+        <label for="weightLb">Weight (lb)</label>
+        <input type="number" id="weightLb" inputmode="decimal" placeholder="e.g. 2.5" step="0.1" min="0.1">
+      </div>
+      <div class="field full">
+        <label>Box dimensions (in)</label>
+        <div class="dims-row">
+          <input type="number" id="lengthIn" placeholder="L" inputmode="decimal" min="1">
+          <input type="number" id="widthIn" placeholder="W" inputmode="decimal" min="1">
+          <input type="number" id="heightIn" placeholder="H" inputmode="decimal" min="1">
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="getRatesBtn">Get Shipping Options</button>
+  </div>
+
+  <div id="status-area"></div>
+
+  <div class="card hidden" id="rates-card">
+    <h2>Select a Shipping Option</h2>
+    <div class="rates" id="rates-list"></div>
+    <button class="btn-primary" id="buyLabelBtn" disabled>Buy Label &amp; Print</button>
+  </div>
+
+  <div class="card hidden" id="label-card">
+    <h2>Label Ready</h2>
+    <a href="#" id="labelLink" class="label-link" target="_blank">Open Label PDF</a>
+    <p class="tracking" id="trackingInfo"></p>
+    <p class="print-note">
+      Open this PDF, then use the Share menu → <strong>Labelife</strong> app to send it to the PM-241-BT for printing.
+    </p>
+  </div>
+
+</main>
+
+<script>
+  const state = { shipmentId: null, selectedRate: null };
+
+  const $ = (id) => document.getElementById(id);
+  const statusArea = $("status-area");
+
+  function showStatus(message, type) {
+    statusArea.innerHTML = `<div class="status-msg ${type}">${message}</div>`;
+  }
+  function clearStatus() { statusArea.innerHTML = ""; }
+
+  $("getRatesBtn").addEventListener("click", async () => {
+    clearStatus();
+    const destZip = $("destZip").value.trim();
+    const weightLb = $("weightLb").value.trim();
+    const lengthIn = $("lengthIn").value.trim();
+    const widthIn = $("widthIn").value.trim();
+    const heightIn = $("heightIn").value.trim();
+
+    if (!destZip || !weightLb || !lengthIn || !widthIn || !heightIn) {
+      showStatus("Please fill in ZIP code, weight, and all three box dimensions.", "error");
+      return;
+    }
+
+    $("getRatesBtn").disabled = true;
+    $("getRatesBtn").textContent = "Getting rates...";
+    $("rates-card").classList.add("hidden");
+    $("label-card").classList.add("hidden");
+
+    try {
+      const res = await fetch("/.netlify/functions/get-shipping-rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destZip,
+          destName: $("destName").value.trim(),
+          destStreet1: $("destStreet1").value.trim(),
+          destCity: $("destCity").value.trim(),
+          destState: $("destState").value.trim(),
+          weightLb,
+          lengthIn,
+          widthIn,
+          heightIn,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showStatus(data.error || "Could not get shipping rates. Please try again.", "error");
+        return;
+      }
+
+      if (!data.rates || data.rates.length === 0) {
+        showStatus("No shipping options found for this address. Double-check the ZIP code.", "error");
+        return;
+      }
+
+      state.shipmentId = data.shipmentId;
+      renderRates(data.rates);
+    } catch (err) {
+      showStatus("Network error — check the connection and try again.", "error");
+    } finally {
+      $("getRatesBtn").disabled = false;
+      $("getRatesBtn").textContent = "Get Shipping Options";
+    }
+  });
+
+  function renderRates(rates) {
+    const list = $("rates-list");
+    list.innerHTML = "";
+    state.selectedRate = null;
+    $("buyLabelBtn").disabled = true;
+
+    rates.forEach((rate) => {
+      const el = document.createElement("div");
+      el.className = "rate-option";
+      el.innerHTML = `
+        <div class="rate-row">
+          <div class="radio-dot"></div>
+          <div class="rate-info">
+            <div class="service">${rate.carrier} — ${rate.service}</div>
+            <div class="meta">${rate.durationTerms || (rate.estimatedDays ? rate.estimatedDays + " business days" : "Estimated delivery varies")}</div>
+          </div>
+        </div>
+        <div class="rate-price">$${rate.price}</div>
+      `;
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".rate-option").forEach((o) => o.classList.remove("selected"));
+        el.classList.add("selected");
+        state.selectedRate = rate;
+        $("buyLabelBtn").disabled = false;
+      });
+      list.appendChild(el);
+    });
+
+    $("rates-card").classList.remove("hidden");
+  }
+
+  $("buyLabelBtn").addEventListener("click", async () => {
+    if (!state.selectedRate) return;
+    clearStatus();
+    $("buyLabelBtn").disabled = true;
+    $("buyLabelBtn").textContent = "Purchasing label...";
+
+    try {
+      const res = await fetch("/.netlify/functions/buy-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rateId: state.selectedRate.rateId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showStatus(data.error || "Could not purchase the label. Please try again.", "error");
+        $("buyLabelBtn").disabled = false;
+        $("buyLabelBtn").textContent = "Buy Label & Print";
+        return;
+      }
+
+      $("labelLink").href = data.labelUrl;
+      $("trackingInfo").textContent = `Tracking #: ${data.trackingNumber || "N/A"}`;
+      $("label-card").classList.remove("hidden");
+      showStatus("Label purchased successfully.", "success");
+    } catch (err) {
+      showStatus("Network error while purchasing the label. Please try again.", "error");
+    } finally {
+      $("buyLabelBtn").disabled = false;
+      $("buyLabelBtn").textContent = "Buy Label & Print";
+    }
+  });
+</script>
+
+</body>
+</html>
