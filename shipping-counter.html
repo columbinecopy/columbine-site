@@ -88,6 +88,29 @@
     grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
   }
+  .dims-row.mailer {
+    grid-template-columns: 1fr 1fr;
+  }
+  .toggle-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .toggle-btn {
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fdfcfa;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
   button {
     font-size: 17px;
     font-weight: 600;
@@ -210,8 +233,15 @@
         <input type="number" id="weightLb" inputmode="decimal" placeholder="e.g. 2.5" step="0.1" min="0.1">
       </div>
       <div class="field full">
-        <label>Box dimensions (in)</label>
-        <div class="dims-row">
+        <label>Package Type</label>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn active" id="typeBoxBtn" data-type="box">Box</button>
+          <button type="button" class="toggle-btn" id="typeMailerBtn" data-type="mailer">Poly Mailer</button>
+        </div>
+      </div>
+      <div class="field full" id="dimsField">
+        <label id="dimsLabel">Box dimensions (in)</label>
+        <div class="dims-row" id="dimsRow">
           <input type="number" id="lengthIn" placeholder="L" inputmode="decimal" min="1">
           <input type="number" id="widthIn" placeholder="W" inputmode="decimal" min="1">
           <input type="number" id="heightIn" placeholder="H" inputmode="decimal" min="1">
@@ -273,14 +303,39 @@
   }
 </script>
 <script async
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz-MrJ7nzusOAC885sG1mmWz9gwR78I1Y&libraries=places&callback=initAutocomplete">
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz-MrJ7nzusOAC885sG1mmWz9gwR78I1Y&libraries=places&loading=async&callback=initAutocomplete">
 </script>
 
 <script>
-  const state = { shipmentId: null, selectedRate: null };
+  const state = { shipmentId: null, selectedRate: null, packageType: "box" };
+  const MAILER_HEIGHT_IN = "1"; // standard flat estimate for poly mailers
 
   const $ = (id) => document.getElementById(id);
   const statusArea = $("status-area");
+
+  $("typeBoxBtn").addEventListener("click", () => setPackageType("box"));
+  $("typeMailerBtn").addEventListener("click", () => setPackageType("mailer"));
+
+  function setPackageType(type) {
+    state.packageType = type;
+    $("typeBoxBtn").classList.toggle("active", type === "box");
+    $("typeMailerBtn").classList.toggle("active", type === "mailer");
+
+    const heightInput = $("heightIn");
+    const dimsRow = $("dimsRow");
+    const dimsLabel = $("dimsLabel");
+
+    if (type === "mailer") {
+      heightInput.classList.add("hidden");
+      heightInput.value = "";
+      dimsRow.classList.add("mailer");
+      dimsLabel.textContent = "Mailer dimensions, flat (in)";
+    } else {
+      heightInput.classList.remove("hidden");
+      dimsRow.classList.remove("mailer");
+      dimsLabel.textContent = "Box dimensions (in)";
+    }
+  }
 
   function showStatus(message, type) {
     statusArea.innerHTML = `<div class="status-msg ${type}">${message}</div>`;
@@ -297,10 +352,14 @@
     const weightLb = $("weightLb").value.trim();
     const lengthIn = $("lengthIn").value.trim();
     const widthIn = $("widthIn").value.trim();
-    const heightIn = $("heightIn").value.trim();
+    const heightIn = state.packageType === "mailer" ? MAILER_HEIGHT_IN : $("heightIn").value.trim();
 
-    if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || !lengthIn || !widthIn || !heightIn) {
-      showStatus("Please fill in the customer's full name, address, weight, and box dimensions.", "error");
+    const dimsMissing = state.packageType === "mailer"
+      ? (!lengthIn || !widthIn)
+      : (!lengthIn || !widthIn || !heightIn);
+
+    if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || dimsMissing) {
+      showStatus("Please fill in the customer's full name, address, weight, and dimensions.", "error");
       return;
     }
 
