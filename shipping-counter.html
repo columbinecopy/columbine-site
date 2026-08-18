@@ -111,6 +111,11 @@
     border-color: var(--accent);
     color: #fff;
   }
+  .weight-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
   button {
     font-size: 17px;
     font-weight: 600;
@@ -229,8 +234,11 @@
         <input type="text" id="destZip" inputmode="numeric" placeholder="e.g. 90028" maxlength="5" required>
       </div>
       <div class="field full">
-        <label for="weightLb">Weight (lb)</label>
-        <input type="number" id="weightLb" inputmode="decimal" placeholder="e.g. 2.5" step="0.1" min="0.1">
+        <label>Weight</label>
+        <div class="weight-row">
+          <input type="number" id="weightLbPart" inputmode="numeric" placeholder="lb" min="0" step="1">
+          <input type="number" id="weightOzPart" inputmode="decimal" placeholder="oz" min="0" max="15.9" step="0.1">
+        </div>
       </div>
       <div class="field full">
         <label>Package Type</label>
@@ -349,7 +357,9 @@
     const destCity = $("destCity").value.trim();
     const destState = $("destState").value.trim();
     const destZip = $("destZip").value.trim();
-    const weightLb = $("weightLb").value.trim();
+    const weightLbPart = parseFloat($("weightLbPart").value) || 0;
+    const weightOzPart = parseFloat($("weightOzPart").value) || 0;
+    const totalOz = (weightLbPart * 16) + weightOzPart;
     const lengthIn = $("lengthIn").value.trim();
     const widthIn = $("widthIn").value.trim();
     const heightIn = state.packageType === "mailer" ? MAILER_HEIGHT_IN : $("heightIn").value.trim();
@@ -358,7 +368,7 @@
       ? (!lengthIn || !widthIn)
       : (!lengthIn || !widthIn || !heightIn);
 
-    if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || dimsMissing) {
+    if (!destName || !destStreet1 || !destCity || !destState || !destZip || totalOz <= 0 || dimsMissing) {
       showStatus("Please fill in the customer's full name, address, weight, and dimensions.", "error");
       return;
     }
@@ -378,7 +388,8 @@
           destStreet1,
           destCity,
           destState,
-          weightLb,
+          weightLb: totalOz,
+          weightUnit: "oz",
           lengthIn,
           widthIn,
           heightIn,
