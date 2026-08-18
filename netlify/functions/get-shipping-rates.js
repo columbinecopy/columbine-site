@@ -35,7 +35,10 @@ exports.handler = async (event) => {
       destStreet1, // optional, improves rate accuracy
       destCity,    // optional
       destState,   // optional
+      destCompany, // optional
+      isPoBox,     // boolean — when true, only USPS rates are returned
       weightLb,
+      weightUnit,  // "lb" or "oz"
       lengthIn,
       widthIn,
       heightIn,
@@ -52,6 +55,7 @@ exports.handler = async (event) => {
 
     const addressTo = {
       name: body.destName || "Customer",
+      company: destCompany || "",
       street1: destStreet1 || "",
       city: destCity || "",
       state: destState || "",
@@ -69,7 +73,7 @@ exports.handler = async (event) => {
           height: String(heightIn),
           distance_unit: "in",
           weight: String(weightLb),
-          mass_unit: "lb",
+          mass_unit: weightUnit === "oz" ? "oz" : "lb", // defaults to lb if not specified
         },
       ],
       async: false,
@@ -103,9 +107,14 @@ exports.handler = async (event) => {
       };
     }
 
+    const uspsOnlyNote = isPoBox
+      ? " (P.O. Box selected — only USPS delivers to PO Boxes, so only USPS options are shown.)"
+      : "";
+
     // Build customer-facing rate list — marked-up price only, real Shippo cost stays server-side
     const customerRates = rates
       .filter((r) => r.amount) // discard malformed entries
+      .filter((r) => !isPoBox || r.provider === "USPS") // UPS/FedEx/DHL don't deliver to PO Boxes
       .map((r) => {
         const realCost = parseFloat(r.amount);
         const markedUpPrice = Math.round(realCost * MARKUP_MULTIPLIER * 100) / 100;
@@ -125,6 +134,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         shipmentId: shipmentData.object_id,
         rates: customerRates,
+        note: uspsOnlyNote,
       }),
     };
   } catch (err) {
