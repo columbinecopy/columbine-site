@@ -41,11 +41,11 @@ exports.handler = async (event) => {
       heightIn,
     } = body;
 
-    if (!destZip || !weightLb || !lengthIn || !widthIn || !heightIn) {
+    if (!destZip || !destStreet1 || !destCity || !destState || !weightLb || !lengthIn || !widthIn || !heightIn) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "Missing required fields: destZip, weightLb, lengthIn, widthIn, heightIn",
+          error: "Missing required fields: full address, weight, and box dimensions are all required.",
         }),
       };
     }
