@@ -186,24 +186,24 @@
     <h2>Destination &amp; Package</h2>
     <div class="grid">
       <div class="field full">
-        <label for="destZip">Destination ZIP code</label>
-        <input type="text" id="destZip" inputmode="numeric" placeholder="e.g. 90028" maxlength="5">
+        <label for="destName">Customer name</label>
+        <input type="text" id="destName" placeholder="For the label" required>
       </div>
       <div class="field full">
-        <label for="destName">Customer name (optional)</label>
-        <input type="text" id="destName" placeholder="For the label">
+        <label for="destStreet1">Street address</label>
+        <input type="text" id="destStreet1" placeholder="Start typing to search..." required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="destCity">City</label>
+        <input type="text" id="destCity" placeholder="City" required>
+      </div>
+      <div class="field">
+        <label for="destState">State</label>
+        <input type="text" id="destState" placeholder="e.g. CO" maxlength="2" required>
       </div>
       <div class="field full">
-        <label for="destStreet1">Street address (optional — improves accuracy)</label>
-        <input type="text" id="destStreet1" placeholder="Optional">
-      </div>
-      <div class="field">
-        <label for="destCity">City (optional)</label>
-        <input type="text" id="destCity" placeholder="Optional">
-      </div>
-      <div class="field">
-        <label for="destState">State (optional)</label>
-        <input type="text" id="destState" placeholder="e.g. CA" maxlength="2">
+        <label for="destZip">ZIP code</label>
+        <input type="text" id="destZip" inputmode="numeric" placeholder="e.g. 90028" maxlength="5" required>
       </div>
       <div class="field full">
         <label for="weightLb">Weight (lb)</label>
@@ -241,6 +241,42 @@
 </main>
 
 <script>
+  // Parses a Google Places result into our city/state/zip fields
+  function initAutocomplete() {
+    const streetInput = document.getElementById("destStreet1");
+    const autocomplete = new google.maps.places.Autocomplete(streetInput, {
+      componentRestrictions: { country: "us" },
+      fields: ["address_components", "formatted_address"],
+      types: ["address"],
+    });
+
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      if (!place.address_components) return;
+
+      let streetNumber = "", route = "", city = "", state = "", zip = "";
+
+      place.address_components.forEach((component) => {
+        const types = component.types;
+        if (types.includes("street_number")) streetNumber = component.long_name;
+        if (types.includes("route")) route = component.long_name;
+        if (types.includes("locality")) city = component.long_name;
+        if (types.includes("administrative_area_level_1")) state = component.short_name;
+        if (types.includes("postal_code")) zip = component.long_name;
+      });
+
+      document.getElementById("destStreet1").value = `${streetNumber} ${route}`.trim();
+      document.getElementById("destCity").value = city;
+      document.getElementById("destState").value = state;
+      document.getElementById("destZip").value = zip;
+    });
+  }
+</script>
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz-MrJ7nzusOAC885sG1mmWz9gwR78I1Y&libraries=places&callback=initAutocomplete">
+</script>
+
+<script>
   const state = { shipmentId: null, selectedRate: null };
 
   const $ = (id) => document.getElementById(id);
@@ -253,14 +289,18 @@
 
   $("getRatesBtn").addEventListener("click", async () => {
     clearStatus();
+    const destName = $("destName").value.trim();
+    const destStreet1 = $("destStreet1").value.trim();
+    const destCity = $("destCity").value.trim();
+    const destState = $("destState").value.trim();
     const destZip = $("destZip").value.trim();
     const weightLb = $("weightLb").value.trim();
     const lengthIn = $("lengthIn").value.trim();
     const widthIn = $("widthIn").value.trim();
     const heightIn = $("heightIn").value.trim();
 
-    if (!destZip || !weightLb || !lengthIn || !widthIn || !heightIn) {
-      showStatus("Please fill in ZIP code, weight, and all three box dimensions.", "error");
+    if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || !lengthIn || !widthIn || !heightIn) {
+      showStatus("Please fill in the customer's full name, address, weight, and box dimensions.", "error");
       return;
     }
 
@@ -275,10 +315,10 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           destZip,
-          destName: $("destName").value.trim(),
-          destStreet1: $("destStreet1").value.trim(),
-          destCity: $("destCity").value.trim(),
-          destState: $("destState").value.trim(),
+          destName,
+          destStreet1,
+          destCity,
+          destState,
           weightLb,
           lengthIn,
           widthIn,
