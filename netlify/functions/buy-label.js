@@ -3,6 +3,7 @@
 // The rateId must come from a rate returned by get-shipping-rates.js.
 
 const SHIPPO_API_KEY = process.env.SHIPPO_API_KEY;
+const STAFF_PIN = process.env.STAFF_PIN;
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -18,6 +19,11 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
+
+    if (!STAFF_PIN || body.pin !== STAFF_PIN) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized." }) };
+    }
+
     const { rateId } = body;
 
     if (!rateId) {
