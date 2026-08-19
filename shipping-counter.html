@@ -65,6 +65,39 @@
   }
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field.full { grid-column: 1 / -1; }
+  #pin-gate {
+    max-width: 360px;
+    margin: 60px auto 0;
+    text-align: center;
+  }
+  #pin-gate input {
+    text-align: center;
+    letter-spacing: 0.2em;
+    font-size: 22px;
+  }
+  .optional-tag {
+    font-weight: 400;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .checkbox-field {
+    padding: 4px 0;
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
   label {
     font-size: 13px;
     font-weight: 600;
@@ -210,6 +243,18 @@
 
 <main>
 
+  <div class="card" id="pin-gate">
+    <h2>Staff Access</h2>
+    <div class="field full">
+      <label for="staffPin">Enter staff PIN to unlock this tool</label>
+      <input type="password" id="staffPin" inputmode="numeric" placeholder="PIN" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="unlockBtn">Unlock</button>
+    <div id="pinError" class="status-msg error hidden" style="margin-top:12px;"></div>
+  </div>
+
+  <div id="tool-content" class="hidden">
+
   <div class="card" id="input-card">
     <h2>Destination &amp; Package</h2>
     <div class="grid">
@@ -218,8 +263,18 @@
         <input type="text" id="destName" placeholder="For the label" required>
       </div>
       <div class="field full">
+        <label for="destCompany">Business name <span class="optional-tag">(optional)</span></label>
+        <input type="text" id="destCompany" placeholder="Company / organization">
+      </div>
+      <div class="field full">
         <label for="destStreet1">Street address</label>
         <input type="text" id="destStreet1" placeholder="Start typing to search..." required autocomplete="off">
+      </div>
+      <div class="field full checkbox-field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="isPoBox">
+          This is a P.O. Box (shows USPS options only)
+        </label>
       </div>
       <div class="field">
         <label for="destCity">City</label>
@@ -276,6 +331,8 @@
     </p>
   </div>
 
+  </div>
+
 </main>
 
 <script>
@@ -315,11 +372,54 @@
 </script>
 
 <script>
-  const state = { shipmentId: null, selectedRate: null, packageType: "box" };
+  const state = { shipmentId: null, selectedRate: null, packageType: "box", pin: null };
   const MAILER_HEIGHT_IN = "1"; // standard flat estimate for poly mailers
 
   const $ = (id) => document.getElementById(id);
   const statusArea = $("status-area");
+
+  $("unlockBtn").addEventListener("click", attemptUnlock);
+  $("staffPin").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") attemptUnlock();
+  });
+
+  async function attemptUnlock() {
+    const enteredPin = $("staffPin").value.trim();
+    const pinErrorEl = $("pinError");
+    pinErrorEl.classList.add("hidden");
+
+    if (!enteredPin) return;
+
+    $("unlockBtn").disabled = true;
+    $("unlockBtn").textContent = "Checking...";
+
+    try {
+      // Verified against the server on first use; also sent with every
+      // rate/label request so the functions themselves stay protected.
+      const res = await fetch("/.netlify/functions/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: enteredPin }),
+      });
+
+      if (!res.ok) {
+        pinErrorEl.textContent = "Incorrect PIN. Please try again.";
+        pinErrorEl.classList.remove("hidden");
+        $("staffPin").value = "";
+        return;
+      }
+
+      state.pin = enteredPin;
+      $("pin-gate").classList.add("hidden");
+      $("tool-content").classList.remove("hidden");
+    } catch (err) {
+      pinErrorEl.textContent = "Network error — please try again.";
+      pinErrorEl.classList.remove("hidden");
+    } finally {
+      $("unlockBtn").disabled = false;
+      $("unlockBtn").textContent = "Unlock";
+    }
+  }
 
   $("typeBoxBtn").addEventListener("click", () => setPackageType("box"));
   $("typeMailerBtn").addEventListener("click", () => setPackageType("mailer"));
@@ -383,11 +483,14 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          pin: state.pin,
           destZip,
           destName,
+          destCompany: $("destCompany").value.trim(),
           destStreet1,
           destCity,
           destState,
+          isPoBox: $("isPoBox").checked,
           weightLb: totalOz,
           weightUnit: "oz",
           lengthIn,
@@ -410,6 +513,9 @@
 
       state.shipmentId = data.shipmentId;
       renderRates(data.rates);
+      if (data.note) {
+        showStatus(data.note, "success");
+      }
     } catch (err) {
       showStatus("Network error — check the connection and try again.", "error");
     } finally {
@@ -459,7 +565,7 @@
       const res = await fetch("/.netlify/functions/buy-label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rateId: state.selectedRate.rateId }),
+        body: JSON.stringify({ pin: state.pin, rateId: state.selectedRate.rateId }),
       });
 
       const data = await res.json();
