@@ -3,6 +3,7 @@
 // Shippo's real cost is NEVER sent to the browser — only the marked-up price.
 
 const SHIPPO_API_KEY = process.env.SHIPPO_API_KEY;
+const STAFF_PIN = process.env.STAFF_PIN;
 const MARKUP_MULTIPLIER = 1.30; // 30% markup
 
 // Fixed shop origin address — Columbine Copy & Apparel
@@ -14,6 +15,7 @@ const ORIGIN_ADDRESS = {
   zip: "81401",
   country: "US",
   phone: "9702494418",
+  email: "print@columbinecopy.com", // required by USPS for label purchase
 };
 
 exports.handler = async (event) => {
@@ -30,6 +32,11 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body);
+
+    if (!STAFF_PIN || body.pin !== STAFF_PIN) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized." }) };
+    }
+
     const {
       destZip,
       destStreet1, // optional, improves rate accuracy
