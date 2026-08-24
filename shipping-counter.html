@@ -110,6 +110,8 @@
     border-radius: 8px;
     background: #fdfcfa;
     color: var(--ink);
+    width: 100%;
+    min-width: 0;
   }
   input:focus {
     outline: none;
@@ -119,10 +121,16 @@
   .dims-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
   }
   .dims-row.mailer {
     grid-template-columns: 1fr 1fr;
+  }
+  .dims-row input,
+  .weight-row input {
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 17px;
   }
   .toggle-row {
     display: grid;
@@ -289,11 +297,12 @@
         <input type="text" id="destZip" inputmode="numeric" placeholder="e.g. 90028" maxlength="5" required>
       </div>
       <div class="field full">
-        <label>Weight</label>
-        <div class="weight-row">
-          <input type="number" id="weightLbPart" inputmode="numeric" placeholder="lb" min="0" step="1">
-          <input type="number" id="weightOzPart" inputmode="decimal" placeholder="oz" min="0" max="15.9" step="0.1">
-        </div>
+        <label for="refNumber">Reference / RA# <span class="optional-tag">(optional, prints on label)</span></label>
+        <input type="text" id="refNumber" placeholder="e.g. RA-10294" maxlength="60">
+      </div>
+      <div class="field full">
+        <label for="weightLb">Weight (lb)</label>
+        <input type="number" id="weightLb" inputmode="decimal" placeholder="e.g. 4.8" step="0.1" min="0.1">
       </div>
       <div class="field full">
         <label>Package Type</label>
@@ -325,9 +334,10 @@
   <div class="card hidden" id="label-card">
     <h2>Label Ready</h2>
     <a href="#" id="labelLink" class="label-link" target="_blank">Open Label PDF</a>
+    <a href="#" id="receiptLink" class="label-link hidden" target="_blank" style="background: var(--accent);">Open Receipt PDF</a>
     <p class="tracking" id="trackingInfo"></p>
     <p class="print-note">
-      Open this PDF, then use the Share menu → <strong>Labelife</strong> app to send it to the PM-241-BT for printing.
+      Print both: open each PDF, then use the Share menu → <strong>Labelife</strong> app to send to the printer.
     </p>
   </div>
 
@@ -457,9 +467,7 @@
     const destCity = $("destCity").value.trim();
     const destState = $("destState").value.trim();
     const destZip = $("destZip").value.trim();
-    const weightLbPart = parseFloat($("weightLbPart").value) || 0;
-    const weightOzPart = parseFloat($("weightOzPart").value) || 0;
-    const totalOz = (weightLbPart * 16) + weightOzPart;
+    const weightLb = $("weightLb").value.trim();
     const lengthIn = $("lengthIn").value.trim();
     const widthIn = $("widthIn").value.trim();
     const heightIn = state.packageType === "mailer" ? MAILER_HEIGHT_IN : $("heightIn").value.trim();
@@ -468,7 +476,7 @@
       ? (!lengthIn || !widthIn)
       : (!lengthIn || !widthIn || !heightIn);
 
-    if (!destName || !destStreet1 || !destCity || !destState || !destZip || totalOz <= 0 || dimsMissing) {
+    if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || dimsMissing) {
       showStatus("Please fill in the customer's full name, address, weight, and dimensions.", "error");
       return;
     }
@@ -477,6 +485,7 @@
     $("getRatesBtn").textContent = "Getting rates...";
     $("rates-card").classList.add("hidden");
     $("label-card").classList.add("hidden");
+    $("receiptLink").classList.add("hidden");
 
     try {
       const res = await fetch("/.netlify/functions/get-shipping-rates", {
@@ -491,8 +500,9 @@
           destCity,
           destState,
           isPoBox: $("isPoBox").checked,
-          weightLb: totalOz,
-          weightUnit: "oz",
+          refNumber: $("refNumber").value.trim(),
+          weightLb: weightLb,
+          weightUnit: "lb",
           lengthIn,
           widthIn,
           heightIn,
@@ -581,6 +591,35 @@
       $("trackingInfo").textContent = `Tracking #: ${data.trackingNumber || "N/A"}`;
       $("label-card").classList.remove("hidden");
       showStatus("Label purchased successfully.", "success");
+
+      // Generate the customer-facing receipt (tracking + price paid)
+      try {
+        const receiptRes = await fetch("/.netlify/functions/generate-receipt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pin: state.pin,
+            customerName: $("destName").value.trim(),
+            carrier: data.carrier || state.selectedRate.carrier,
+            service: state.selectedRate.service,
+            price: state.selectedRate.price,
+            trackingNumber: data.trackingNumber,
+          }),
+        });
+        const receiptData = await receiptRes.json();
+        if (receiptRes.ok && receiptData.receiptBase64) {
+          const byteChars = atob(receiptData.receiptBase64);
+          const byteNumbers = new Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+          const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+          const receiptUrl = URL.createObjectURL(blob);
+          $("receiptLink").href = receiptUrl;
+          $("receiptLink").classList.remove("hidden");
+        }
+      } catch (receiptErr) {
+        console.error("Receipt generation failed:", receiptErr);
+        // Label already purchased successfully — receipt failure shouldn't block the flow.
+      }
     } catch (err) {
       showStatus("Network error while purchasing the label. Please try again.", "error");
     } finally {
