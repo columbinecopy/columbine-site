@@ -44,6 +44,7 @@ exports.handler = async (event) => {
       destState,   // optional
       destCompany, // optional
       isPoBox,     // boolean — when true, only USPS rates are returned
+      refNumber,   // optional — prints on the label (RA#, PO#, etc.)
       weightLb,
       weightUnit,  // "lb" or "oz"
       lengthIn,
@@ -85,6 +86,12 @@ exports.handler = async (event) => {
       ],
       async: false,
     };
+
+    // Optional reference number (e.g. a return authorization #) — prints
+    // directly on supported carrier labels (USPS prints it at the bottom).
+    if (refNumber) {
+      shipmentPayload.extra = { reference_1: refNumber };
+    }
 
     const shippoResponse = await fetch("https://api.goshippo.com/shipments/", {
       method: "POST",
