@@ -321,6 +321,7 @@
       </div>
     </div>
     <button class="btn-primary" id="getRatesBtn">Get Shipping Options</button>
+    <button type="button" id="clearDisplayBtn" style="margin-top:10px; background:none; border:1px solid var(--line); color:var(--muted); padding:10px; border-radius:8px; width:100%; font-size:14px; cursor:pointer;">Reset Customer Display</button>
   </div>
 
   <div id="status-area"></div>
@@ -393,6 +394,46 @@
     if (e.key === "Enter") attemptUnlock();
   });
 
+  // Pushes the current customer/rate info to the customer-facing tablet display.
+  // Fire-and-forget — a failure here should never interrupt the main quote/purchase flow.
+  async function pushToDisplay(rates, completedInfo) {
+    try {
+      const packageType = state.packageType === "mailer" ? "Poly Mailer" : "Box";
+      const dims = state.packageType === "mailer"
+        ? `${$("lengthIn").value}" x ${$("widthIn").value}"`
+        : `${$("lengthIn").value}" x ${$("widthIn").value}" x ${$("heightIn").value}"`;
+      const weight = $("weightLb").value ? `${$("weightLb").value} lb` : "";
+
+      await fetch("/.netlify/functions/save-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin: state.pin,
+          status: completedInfo ? "completed" : "quote",
+          customerName: $("destName").value.trim(),
+          address: `${$("destStreet1").value.trim()}, ${$("destCity").value.trim()}, ${$("destState").value.trim()} ${$("destZip").value.trim()}`,
+          packageSummary: `${packageType}, ${dims}, ${weight}`,
+          rates: rates || [],
+          completedInfo: completedInfo || null,
+        }),
+      });
+    } catch (err) {
+      // Silent — display sync is a bonus feature, not critical path.
+    }
+  }
+
+  async function clearDisplay() {
+    try {
+      await fetch("/.netlify/functions/clear-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: state.pin }),
+      });
+    } catch (err) {
+      // Silent — non-critical.
+    }
+  }
+
   async function attemptUnlock() {
     const enteredPin = $("staffPin").value.trim();
     const pinErrorEl = $("pinError");
@@ -460,6 +501,11 @@
   }
   function clearStatus() { statusArea.innerHTML = ""; }
 
+  $("clearDisplayBtn").addEventListener("click", () => {
+    clearDisplay();
+    showStatus("Customer display reset.", "success");
+  });
+
   $("getRatesBtn").addEventListener("click", async () => {
     clearStatus();
     const destName = $("destName").value.trim();
@@ -526,6 +572,7 @@
       if (data.note) {
         showStatus(data.note, "success");
       }
+      pushToDisplay(data.rates);
     } catch (err) {
       showStatus("Network error — check the connection and try again.", "error");
     } finally {
@@ -589,6 +636,12 @@
 
       $("labelLink").href = data.labelUrl;
       $("trackingInfo").textContent = `Tracking #: ${data.trackingNumber || "N/A"}`;
+
+      pushToDisplay(null, {
+        service: state.selectedRate.service,
+        price: state.selectedRate.price,
+        trackingNumber: data.trackingNumber,
+      });
       $("label-card").classList.remove("hidden");
       showStatus("Label purchased successfully.", "success");
 
