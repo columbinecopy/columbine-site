@@ -6,6 +6,14 @@ const { getStore } = require("@netlify/blobs");
 const STAFF_PIN = process.env.STAFF_PIN;
 const SESSION_KEY = "current-session";
 
+function getSessionStore() {
+  return getStore({
+    name: "shipping-counter-sessions",
+    siteID: process.env.BLOBS_SITE_ID,
+    token: process.env.BLOBS_TOKEN,
+  });
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
@@ -18,7 +26,7 @@ exports.handler = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized." }) };
     }
 
-    const store = getStore("shipping-counter-sessions");
+    const store = getSessionStore();
     await store.delete(SESSION_KEY);
 
     return { statusCode: 200, body: JSON.stringify({ ok: true }) };

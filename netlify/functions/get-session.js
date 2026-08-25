@@ -8,13 +8,21 @@ const { getStore } = require("@netlify/blobs");
 const SESSION_KEY = "current-session";
 const STALE_MS = 10 * 60 * 1000; // treat sessions older than 10 min as stale
 
+function getSessionStore() {
+  return getStore({
+    name: "shipping-counter-sessions",
+    siteID: process.env.BLOBS_SITE_ID,
+    token: process.env.BLOBS_TOKEN,
+  });
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
   try {
-    const store = getStore("shipping-counter-sessions");
+    const store = getSessionStore();
     const session = await store.get(SESSION_KEY, { type: "json" });
 
     if (!session || Date.now() - session.updatedAt > STALE_MS) {
