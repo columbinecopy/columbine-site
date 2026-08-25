@@ -5,6 +5,6 @@
   "dependencies": {
     "square": "^37.0.0",
     "pdfkit": "^0.15.0",
-    ""@netlify/blobs": "^8.1.0"
+    "@netlify/blobs": "^8.1.0"
   }
 }
