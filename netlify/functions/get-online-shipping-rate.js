@@ -122,6 +122,13 @@ async function quoteBox(box, addressTo) {
 
   if (eligible.length === 0) return null;
 
+  // TEMP DEBUG: logs every eligible (Ground/Ground Advantage/Priority) rate
+  // Shippo returned for this box, before markup, so you can confirm the
+  // cheapest one is actually being picked. Check the function log in Netlify
+  // after a test quote. Safe to remove once you've confirmed it.
+  console.log(`Eligible rates for ${box.label} box (${box.weightLb} lb):`,
+    eligible.map(r => `${r.provider} ${r.servicelevel?.name || r.servicelevel_token} — $${r.amount}`));
+
   const cheapest = eligible.reduce((a, b) => (parseFloat(a.amount) < parseFloat(b.amount) ? a : b));
   const markedUp = Math.round(parseFloat(cheapest.amount) * MARKUP_MULTIPLIER * 100) / 100;
 
