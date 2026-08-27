@@ -11,7 +11,7 @@
 //   - Real Shippo cost never reaches the browser — only the marked-up price
 
 const SHIPPO_API_KEY = process.env.SHIPPO_API_KEY;
-const MARKUP_MULTIPLIER = 1.30; // 30% markup — same as the counter system
+const MARKUP_MULTIPLIER = 1.10; // 10% markup — same as the counter system
 
 // ── CORS: only Columbine's own sites may call this function ─────────────────
 const ALLOWED_ORIGINS = [
