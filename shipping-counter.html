@@ -323,6 +323,18 @@
           This is a P.O. Box (shows USPS options only)
         </label>
       </div>
+      <div class="field full checkbox-field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="wantsInsurance">
+          Insure this package (30% markup applied, same as shipping)
+        </label>
+      </div>
+      <div class="field full" id="insuranceFieldsStaff">
+        <div class="dims-row" style="grid-template-columns: 1fr 2fr;">
+          <input type="number" id="insuranceAmount" inputmode="decimal" min="1" step="1" placeholder="Value $">
+          <input type="text" id="insuranceContent" placeholder="Contents (e.g. custom t-shirts)">
+        </div>
+      </div>
       <div class="field">
         <label for="destCity">City</label>
         <input type="text" id="destCity" placeholder="City" required>
@@ -467,6 +479,9 @@
       $("destState").value = data.recipientState || "";
       $("destZip").value = data.recipientZip || "";
       $("isPoBox").checked = !!data.recipientIsPoBox;
+      $("wantsInsurance").checked = !!data.wantsInsurance;
+      $("insuranceAmount").value = data.insuranceAmount || "";
+      $("insuranceContent").value = data.insuranceContent || "";
 
       $("syncStatus").textContent = "Customer info received ✓";
       $("syncStatus").style.color = "var(--accent-dark)";
@@ -546,8 +561,9 @@
     state.autoFetchedForSubmission = false;
     ["senderName","senderStreet1","senderCity","senderState","senderZip","senderEmail","senderPhone",
      "destName","destCompany","destStreet1","destCity","destState","destZip","refNumber","weightLb",
-     "lengthIn","widthIn","heightIn"].forEach((id) => { $(id).value = ""; });
+     "lengthIn","widthIn","heightIn","insuranceAmount","insuranceContent"].forEach((id) => { $(id).value = ""; });
     $("isPoBox").checked = false;
+    $("wantsInsurance").checked = false;
     $("syncStatus").textContent = "Waiting for customer to fill out their info on the tablet...";
     $("syncStatus").style.color = "var(--muted)";
     $("rates-card").classList.add("hidden");
@@ -683,6 +699,8 @@
           destCity,
           destState,
           isPoBox: $("isPoBox").checked,
+          insuranceAmount: $("wantsInsurance").checked ? $("insuranceAmount").value.trim() : "",
+          insuranceContent: $("wantsInsurance").checked ? $("insuranceContent").value.trim() : "",
           refNumber: $("refNumber").value.trim(),
           weightLb: weightLb,
           weightUnit: "lb",
@@ -732,7 +750,7 @@
           <div class="radio-dot"></div>
           <div class="rate-info">
             <div class="service">${rate.carrier} — ${rate.service}</div>
-            <div class="meta">${rate.durationTerms || (rate.estimatedDays ? rate.estimatedDays + " business days" : "Estimated delivery varies")}</div>
+            <div class="meta">${rate.durationTerms || (rate.estimatedDays ? rate.estimatedDays + " business days" : "Estimated delivery varies")}${rate.insuranceIncluded ? ` · Includes $${rate.insuranceIncluded} insurance` : ""}</div>
           </div>
         </div>
         <div class="rate-price">$${rate.price}</div>

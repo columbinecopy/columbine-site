@@ -214,9 +214,20 @@
         <div class="field"><label>ZIP</label><input type="text" id="recipientZip" inputmode="numeric" maxlength="5" required></div>
         <label class="checkbox-label"><input type="checkbox" id="recipientIsPoBox"> This is a P.O. Box</label>
       </div>
+      <div class="card">
+        <h2>Package Protection</h2>
+        <label class="checkbox-label"><input type="checkbox" id="wantsInsurance"> Insure this package for its full value</label>
+        <div id="insuranceFields" class="hidden" style="margin-top:14px;">
+          <div class="field"><label>Value to insure ($)</label><input type="number" id="insuranceAmount" inputmode="decimal" min="1" step="1" placeholder="e.g. 150"></div>
+          <div class="field"><label>What's in the package?</label><input type="text" id="insuranceContent" placeholder="e.g. custom t-shirts"></div>
+        </div>
+      </div>
       <button class="submit-btn" id="submitBtn">Submit</button>
     `;
     document.getElementById("submitBtn").addEventListener("click", submitCustomerInfo);
+    document.getElementById("wantsInsurance").addEventListener("change", (e) => {
+      document.getElementById("insuranceFields").classList.toggle("hidden", !e.target.checked);
+    });
     initAddressAutocomplete();
   }
 
@@ -271,12 +282,20 @@
       recipientState: val("recipientState"),
       recipientZip: val("recipientZip"),
       recipientIsPoBox: document.getElementById("recipientIsPoBox").checked,
+      wantsInsurance: document.getElementById("wantsInsurance").checked,
+      insuranceAmount: val("insuranceAmount"),
+      insuranceContent: val("insuranceContent"),
     };
 
     const requiredFields = ["senderName","senderStreet1","senderCity","senderState","senderZip","senderEmail","senderPhone","recipientName","recipientStreet1","recipientCity","recipientState","recipientZip"];
     const missing = requiredFields.some((f) => !data[f]);
     if (missing) {
       errorEl.innerHTML = '<div class="error-msg">Please fill in all required fields.</div>';
+      return;
+    }
+
+    if (data.wantsInsurance && (!data.insuranceAmount || !data.insuranceContent)) {
+      errorEl.innerHTML = '<div class="error-msg">Please enter a value and description for the insured item.</div>';
       return;
     }
 
@@ -376,12 +395,16 @@
         <div class="rate-option">
           <div class="rate-info">
             <div class="service">${escapeHtml(r.carrier)} — ${escapeHtml(r.service)}</div>
-            <div class="meta">${escapeHtml(r.durationTerms || (r.estimatedDays ? r.estimatedDays + " business days" : ""))}</div>
+            <div class="meta">${escapeHtml(r.durationTerms || (r.estimatedDays ? r.estimatedDays + " business days" : ""))}${r.insuranceIncluded ? ` · Includes $${r.insuranceIncluded} insurance` : ""}</div>
           </div>
           <div class="rate-price">$${r.price}</div>
         </div>
       `).join("");
     }
+
+    const insuranceRow = data.wantsInsurance
+      ? `<div class="detail-row"><span class="detail-label">Insured Value</span><span class="detail-value">$${escapeHtml(String(data.insuranceAmount || ""))} — ${escapeHtml(data.insuranceContent || "")}</span></div>`
+      : "";
 
     content.innerHTML = `
       <div class="card">
@@ -394,6 +417,7 @@
         <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${escapeHtml(data.recipientName || "")}</span></div>
         <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${escapeHtml(data.recipientAddress || "")}</span></div>
         <div class="detail-row"><span class="detail-label">Package</span><span class="detail-value">${escapeHtml(data.packageSummary || "")}</span></div>
+        ${insuranceRow}
       </div>
       ${ratesHtml ? '<div class="card"><h2>Please Confirm Your Shipping Option</h2>' + ratesHtml + '</div>' : ""}
     `;
