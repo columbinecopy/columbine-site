@@ -1,7 +1,7 @@
 // save-session.js
-// Writes the current customer + rate quote info to Netlify Blobs so the
-// customer-facing display tablet can poll and show it. PIN-protected since
-// it's called from the staff-side tool.
+// Writes the current rate quote (or completed purchase) info to Netlify
+// Blobs so the customer-facing display tablet can poll and show it.
+// PIN-protected since it's called from the staff-side tool.
 
 const { getStore } = require("@netlify/blobs");
 
@@ -29,11 +29,15 @@ exports.handler = async (event) => {
     }
 
     const store = getSessionStore();
+    const existing = (await store.get(SESSION_KEY, { type: "json" })) || {};
 
     const sessionData = {
-      status: body.status || "quote", // "quote" | "completed"
-      customerName: body.customerName || "",
-      address: body.address || "",
+      ...existing,
+      phase: body.phase || "quote", // "quote" | "completed"
+      senderName: body.senderName || existing.senderName || "",
+      senderAddress: body.senderAddress || existing.senderAddress || "",
+      recipientName: body.recipientName || existing.recipientName || "",
+      recipientAddress: body.recipientAddress || existing.recipientAddress || "",
       packageSummary: body.packageSummary || "",
       rates: body.rates || [],
       completedInfo: body.completedInfo || null, // { service, price, trackingNumber }

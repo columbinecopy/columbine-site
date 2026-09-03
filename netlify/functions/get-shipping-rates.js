@@ -6,17 +6,9 @@ const SHIPPO_API_KEY = process.env.SHIPPO_API_KEY;
 const STAFF_PIN = process.env.STAFF_PIN;
 const MARKUP_MULTIPLIER = 1.30; // 30% markup
 
-// Fixed shop origin address — Columbine Copy & Apparel
-const ORIGIN_ADDRESS = {
-  name: "Columbine Copy & Apparel",
-  street1: "419 N. 1st Street",
-  city: "Montrose",
-  state: "CO",
-  zip: "81401",
-  country: "US",
-  phone: "9702494418",
-  email: "print@columbinecopy.com", // required by USPS for label purchase
-};
+// Note: as of the return-address change, the customer's own info is used as
+// address_from (so failed deliveries route back to them, not the shop) —
+// this is no longer a fixed shop constant, it comes in on every request.
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -38,6 +30,15 @@ exports.handler = async (event) => {
     }
 
     const {
+      // Sender / return address — now the customer's own info, not the shop's
+      senderName,
+      senderStreet1,
+      senderCity,
+      senderState,
+      senderZip,
+      senderEmail,
+      senderPhone,
+      // Recipient / ship-to
       destZip,
       destStreet1, // optional, improves rate accuracy
       destCity,    // optional
@@ -52,6 +53,15 @@ exports.handler = async (event) => {
       heightIn,
     } = body;
 
+    if (!senderName || !senderStreet1 || !senderCity || !senderState || !senderZip || !senderEmail || !senderPhone) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Missing required sender (return address) fields.",
+        }),
+      };
+    }
+
     if (!destZip || !destStreet1 || !destCity || !destState || !weightLb || !lengthIn || !widthIn || !heightIn) {
       return {
         statusCode: 400,
@@ -60,6 +70,17 @@ exports.handler = async (event) => {
         }),
       };
     }
+
+    const addressFrom = {
+      name: senderName,
+      street1: senderStreet1,
+      city: senderCity,
+      state: senderState,
+      zip: senderZip,
+      country: "US",
+      email: senderEmail, // required by USPS for label purchase
+      phone: senderPhone,
+    };
 
     const addressTo = {
       name: body.destName || "Customer",
@@ -72,7 +93,7 @@ exports.handler = async (event) => {
     };
 
     const shipmentPayload = {
-      address_from: ORIGIN_ADDRESS,
+      address_from: addressFrom,
       address_to: addressTo,
       parcels: [
         {
