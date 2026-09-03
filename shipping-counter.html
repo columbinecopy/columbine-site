@@ -263,12 +263,51 @@
 
   <div id="tool-content" class="hidden">
 
-  <div class="card" id="input-card">
-    <h2>Destination &amp; Package</h2>
+  <div class="card" id="sync-status-card">
+    <h2>Customer Info</h2>
+    <p id="syncStatus" style="margin:0; color:var(--muted); font-size:14px;">Waiting for customer to fill out their info on the tablet...</p>
+  </div>
+
+  <div class="card" id="sender-card">
+    <h2>Return Address (Sender)</h2>
     <div class="grid">
       <div class="field full">
-        <label for="destName">Customer name</label>
-        <input type="text" id="destName" placeholder="For the label" required>
+        <label for="senderName">Sender Name</label>
+        <input type="text" id="senderName" placeholder="Auto-fills from tablet" required>
+      </div>
+      <div class="field full">
+        <label for="senderStreet1">Street address</label>
+        <input type="text" id="senderStreet1" placeholder="Start typing to search..." required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="senderCity">City</label>
+        <input type="text" id="senderCity" placeholder="City" required>
+      </div>
+      <div class="field">
+        <label for="senderState">State</label>
+        <input type="text" id="senderState" placeholder="e.g. CO" maxlength="2" required>
+      </div>
+      <div class="field">
+        <label for="senderZip">ZIP</label>
+        <input type="text" id="senderZip" inputmode="numeric" maxlength="5" required>
+      </div>
+      <div class="field">
+        <label for="senderEmail">Email</label>
+        <input type="email" id="senderEmail" required>
+      </div>
+      <div class="field full">
+        <label for="senderPhone">Phone</label>
+        <input type="tel" id="senderPhone" required>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="input-card">
+    <h2>Shipping To (Recipient) &amp; Package</h2>
+    <div class="grid">
+      <div class="field full">
+        <label for="destName">Recipient name</label>
+        <input type="text" id="destName" placeholder="Auto-fills from tablet" required>
       </div>
       <div class="field full">
         <label for="destCompany">Business name <span class="optional-tag">(optional)</span></label>
@@ -347,9 +386,9 @@
 </main>
 
 <script>
-  // Parses a Google Places result into our city/state/zip fields
-  function initAutocomplete() {
-    const streetInput = document.getElementById("destStreet1");
+  // Parses a Google Places result into city/state/zip fields for a given prefix
+  function bindAutocomplete(inputId, prefix) {
+    const streetInput = document.getElementById(inputId);
     const autocomplete = new google.maps.places.Autocomplete(streetInput, {
       componentRestrictions: { country: "us" },
       fields: ["address_components", "formatted_address"],
@@ -371,11 +410,16 @@
         if (types.includes("postal_code")) zip = component.long_name;
       });
 
-      document.getElementById("destStreet1").value = `${streetNumber} ${route}`.trim();
-      document.getElementById("destCity").value = city;
-      document.getElementById("destState").value = state;
-      document.getElementById("destZip").value = zip;
+      document.getElementById(inputId).value = `${streetNumber} ${route}`.trim();
+      document.getElementById(prefix + "City").value = city;
+      document.getElementById(prefix + "State").value = state;
+      document.getElementById(prefix + "Zip").value = zip;
     });
+  }
+
+  function initAutocomplete() {
+    bindAutocomplete("senderStreet1", "sender");
+    bindAutocomplete("destStreet1", "dest");
   }
 </script>
 <script async
@@ -383,11 +427,72 @@
 </script>
 
 <script>
-  const state = { shipmentId: null, selectedRate: null, packageType: "box", pin: null };
+  const state = { shipmentId: null, selectedRate: null, packageType: "box", pin: null, customerInfoReceived: false, lastSubmittedAt: null, autoFetchedForSubmission: false };
   const MAILER_HEIGHT_IN = "1"; // standard flat estimate for poly mailers
 
   const $ = (id) => document.getElementById(id);
   const statusArea = $("status-area");
+  let customerInputPollTimer = null;
+
+  function startCustomerInputPolling() {
+    if (customerInputPollTimer) return;
+    customerInputPollTimer = setInterval(pollCustomerInput, 2000);
+  }
+
+  async function pollCustomerInput() {
+    if (!state.pin) return;
+    try {
+      const res = await fetch(`/.netlify/functions/get-customer-input?pin=${encodeURIComponent(state.pin)}`);
+      const data = await res.json();
+
+      if (!data.available) return;
+      if (state.lastSubmittedAt === data.submittedAt) return; // already applied this submission
+
+      state.lastSubmittedAt = data.submittedAt;
+      state.customerInfoReceived = true;
+      state.autoFetchedForSubmission = false;
+
+      $("senderName").value = data.senderName || "";
+      $("senderStreet1").value = data.senderStreet1 || "";
+      $("senderCity").value = data.senderCity || "";
+      $("senderState").value = data.senderState || "";
+      $("senderZip").value = data.senderZip || "";
+      $("senderEmail").value = data.senderEmail || "";
+      $("senderPhone").value = data.senderPhone || "";
+
+      $("destName").value = data.recipientName || "";
+      $("destCompany").value = data.recipientCompany || "";
+      $("destStreet1").value = data.recipientStreet1 || "";
+      $("destCity").value = data.recipientCity || "";
+      $("destState").value = data.recipientState || "";
+      $("destZip").value = data.recipientZip || "";
+      $("isPoBox").checked = !!data.recipientIsPoBox;
+
+      $("syncStatus").textContent = "Customer info received ✓";
+      $("syncStatus").style.color = "var(--accent-dark)";
+
+      checkAutoFetch();
+    } catch (err) {
+      // silent — just retry next interval
+    }
+  }
+
+  function checkAutoFetch() {
+    const weightLb = $("weightLb").value.trim();
+    const lengthIn = $("lengthIn").value.trim();
+    const widthIn = $("widthIn").value.trim();
+    const heightIn = state.packageType === "mailer" ? "1" : $("heightIn").value.trim();
+    const dimsReady = state.packageType === "mailer" ? (lengthIn && widthIn) : (lengthIn && widthIn && heightIn);
+
+    if (state.customerInfoReceived && weightLb && dimsReady && !state.autoFetchedForSubmission) {
+      state.autoFetchedForSubmission = true;
+      fetchRates();
+    }
+  }
+
+  ["weightLb", "lengthIn", "widthIn", "heightIn"].forEach((id) => {
+    $(id).addEventListener("input", checkAutoFetch);
+  });
 
   $("unlockBtn").addEventListener("click", attemptUnlock);
   $("staffPin").addEventListener("keydown", (e) => {
@@ -409,9 +514,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pin: state.pin,
-          status: completedInfo ? "completed" : "quote",
-          customerName: $("destName").value.trim(),
-          address: `${$("destStreet1").value.trim()}, ${$("destCity").value.trim()}, ${$("destState").value.trim()} ${$("destZip").value.trim()}`,
+          phase: completedInfo ? "completed" : "quote",
+          senderName: $("senderName").value.trim(),
+          senderAddress: `${$("senderStreet1").value.trim()}, ${$("senderCity").value.trim()}, ${$("senderState").value.trim()} ${$("senderZip").value.trim()}`,
+          recipientName: $("destName").value.trim(),
+          recipientAddress: `${$("destStreet1").value.trim()}, ${$("destCity").value.trim()}, ${$("destState").value.trim()} ${$("destZip").value.trim()}`,
           packageSummary: `${packageType}, ${dims}, ${weight}`,
           rates: rates || [],
           completedInfo: completedInfo || null,
@@ -432,6 +539,19 @@
     } catch (err) {
       // Silent — non-critical.
     }
+
+    // Reset local staff-side form and sync state for the next customer
+    state.customerInfoReceived = false;
+    state.lastSubmittedAt = null;
+    state.autoFetchedForSubmission = false;
+    ["senderName","senderStreet1","senderCity","senderState","senderZip","senderEmail","senderPhone",
+     "destName","destCompany","destStreet1","destCity","destState","destZip","refNumber","weightLb",
+     "lengthIn","widthIn","heightIn"].forEach((id) => { $(id).value = ""; });
+    $("isPoBox").checked = false;
+    $("syncStatus").textContent = "Waiting for customer to fill out their info on the tablet...";
+    $("syncStatus").style.color = "var(--muted)";
+    $("rates-card").classList.add("hidden");
+    $("label-card").classList.add("hidden");
   }
 
   async function attemptUnlock() {
@@ -463,6 +583,7 @@
       state.pin = enteredPin;
       $("pin-gate").classList.add("hidden");
       $("tool-content").classList.remove("hidden");
+      startCustomerInputPolling();
     } catch (err) {
       pinErrorEl.textContent = "Network error — please try again.";
       pinErrorEl.classList.remove("hidden");
@@ -506,8 +627,18 @@
     showStatus("Customer display reset.", "success");
   });
 
-  $("getRatesBtn").addEventListener("click", async () => {
+  $("getRatesBtn").addEventListener("click", fetchRates);
+
+  async function fetchRates() {
     clearStatus();
+    const senderName = $("senderName").value.trim();
+    const senderStreet1 = $("senderStreet1").value.trim();
+    const senderCity = $("senderCity").value.trim();
+    const senderState = $("senderState").value.trim();
+    const senderZip = $("senderZip").value.trim();
+    const senderEmail = $("senderEmail").value.trim();
+    const senderPhone = $("senderPhone").value.trim();
+
     const destName = $("destName").value.trim();
     const destStreet1 = $("destStreet1").value.trim();
     const destCity = $("destCity").value.trim();
@@ -522,8 +653,13 @@
       ? (!lengthIn || !widthIn)
       : (!lengthIn || !widthIn || !heightIn);
 
+    if (!senderName || !senderStreet1 || !senderCity || !senderState || !senderZip || !senderEmail || !senderPhone) {
+      showStatus("Please fill in the sender's (return address) full info.", "error");
+      return;
+    }
+
     if (!destName || !destStreet1 || !destCity || !destState || !destZip || !weightLb || dimsMissing) {
-      showStatus("Please fill in the customer's full name, address, weight, and dimensions.", "error");
+      showStatus("Please fill in the recipient's full name, address, weight, and dimensions.", "error");
       return;
     }
 
@@ -539,6 +675,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pin: state.pin,
+          senderName, senderStreet1, senderCity, senderState, senderZip, senderEmail, senderPhone,
           destZip,
           destName,
           destCompany: $("destCompany").value.trim(),
@@ -579,7 +716,7 @@
       $("getRatesBtn").disabled = false;
       $("getRatesBtn").textContent = "Get Shipping Options";
     }
-  });
+  }
 
   function renderRates(rates) {
     const list = $("rates-list");

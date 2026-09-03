@@ -26,45 +26,40 @@
   .wrap {
     max-width: 820px;
     margin: 0 auto;
-    padding: 32px 24px 60px;
+    padding: 28px 22px 60px;
   }
   header {
     text-align: center;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
   }
-  header h1 {
-    margin: 0;
-    font-size: 26px;
-  }
-  header p {
-    margin: 4px 0 0;
-    color: var(--muted);
-    font-size: 15px;
-  }
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 
-  /* Idle state */
   .idle {
     text-align: center;
-    padding: 100px 20px;
+    padding: 80px 20px;
     color: var(--muted);
   }
-  .idle .icon {
-    font-size: 56px;
-    margin-bottom: 16px;
+  .idle .icon { font-size: 56px; margin-bottom: 16px; }
+  .idle h2 { color: var(--ink); font-size: 22px; margin: 0 0 20px; }
+  .big-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 20px 36px;
+    font-size: 19px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
   }
-  .idle h2 {
-    color: var(--ink);
-    font-size: 22px;
-    margin: 0 0 8px;
-  }
+  .big-btn:active { background: var(--accent-dark); }
 
-  /* Active quote state */
   .card {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 22px;
-    margin-bottom: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
   }
   .card h2 {
     margin: 0 0 14px;
@@ -73,12 +68,65 @@
     letter-spacing: 0.06em;
     color: var(--muted);
   }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  label { font-size: 13px; font-weight: 600; }
+  input {
+    font-size: 17px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fdfcfa;
+    color: var(--ink);
+    width: 100%;
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47,82,51,0.12);
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .checkbox-label input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .submit-btn:disabled { background: #a9a49a; }
+
+  .error-msg {
+    background: #fbe9e3;
+    color: #b3441e;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+
+  .waiting { text-align: center; padding: 90px 20px; color: var(--muted); }
+  .waiting .spin { font-size: 46px; margin-bottom: 14px; }
+
   .detail-row {
     display: flex;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 7px 0;
     border-bottom: 1px solid #f0eee9;
-    font-size: 16px;
+    font-size: 15px;
   }
   .detail-row:last-child { border-bottom: none; }
   .detail-label { color: var(--muted); }
@@ -94,30 +142,14 @@
     margin-bottom: 10px;
     background: #fdfcfa;
   }
-  .rate-info .service { font-weight: 700; font-size: 17px; }
-  .rate-info .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .rate-price { font-size: 22px; font-weight: 700; color: var(--accent-dark); }
+  .rate-info .service { font-weight: 700; font-size: 16px; }
+  .rate-info .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .rate-price { font-size: 20px; font-weight: 700; color: var(--accent-dark); }
 
-  /* Completed state */
-  .completed {
-    text-align: center;
-    padding: 40px 20px;
-  }
-  .completed .check {
-    font-size: 60px;
-    color: var(--accent);
-    margin-bottom: 10px;
-  }
-  .completed h2 {
-    font-size: 24px;
-    margin: 0 0 20px;
-  }
-  .completed .price-big {
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--accent-dark);
-    margin: 14px 0;
-  }
+  .completed { text-align: center; padding: 40px 20px; }
+  .completed .check { font-size: 56px; color: var(--accent); margin-bottom: 8px; }
+  .completed h2 { font-size: 22px; margin: 0 0 16px; }
+  .completed .price-big { font-size: 32px; font-weight: 700; color: var(--accent-dark); margin: 12px 0; }
 </style>
 </head>
 <body>
@@ -127,65 +159,217 @@
     <h1>Columbine Copy &amp; Apparel</h1>
     <p>Shipping Services</p>
   </header>
-
   <div id="content">
     <div class="idle" id="idleState">
       <div class="icon">📦</div>
       <h2>Ready to help you ship</h2>
-      <p>Please hand this to our team member to get started.</p>
+      <button class="big-btn" id="startBtn">Start New Shipment</button>
     </div>
   </div>
 </div>
 
 <script>
   const POLL_INTERVAL_MS = 2000;
-  let lastSnapshot = "";
+  let localMode = "idle"; // idle | form | waiting | review | completed
+  let pollTimer = null;
+  let autocompleteSender = null;
+  let autocompleteRecipient = null;
+
+  const content = document.getElementById("content");
+
+  document.getElementById("startBtn").addEventListener("click", startNewShipment);
+
+  async function startNewShipment() {
+    try {
+      await fetch("/.netlify/functions/start-session", { method: "POST" });
+    } catch (err) {
+      // Even if this fails, still show the form locally — worst case the
+      // old session lingers briefly until overwritten by the next submit.
+    }
+    localMode = "form";
+    renderForm();
+    stopPolling();
+  }
+
+  function renderForm() {
+    content.innerHTML = `
+      <div id="formError"></div>
+      <div class="card">
+        <h2>Your Return Info</h2>
+        <div class="field"><label>Your Name</label><input type="text" id="senderName" required></div>
+        <div class="field"><label>Street Address</label><input type="text" id="senderStreet1" autocomplete="off" placeholder="Start typing to search..." required></div>
+        <div class="field"><label>City</label><input type="text" id="senderCity" required></div>
+        <div class="field"><label>State</label><input type="text" id="senderState" maxlength="2" required></div>
+        <div class="field"><label>ZIP</label><input type="text" id="senderZip" inputmode="numeric" maxlength="5" required></div>
+        <div class="field"><label>Email</label><input type="email" id="senderEmail" required></div>
+        <div class="field"><label>Phone</label><input type="tel" id="senderPhone" required></div>
+      </div>
+      <div class="card">
+        <h2>Shipping To</h2>
+        <div class="field"><label>Recipient Name</label><input type="text" id="recipientName" required></div>
+        <div class="field"><label>Business Name (optional)</label><input type="text" id="recipientCompany"></div>
+        <div class="field"><label>Street Address</label><input type="text" id="recipientStreet1" autocomplete="off" placeholder="Start typing to search..." required></div>
+        <div class="field"><label>City</label><input type="text" id="recipientCity" required></div>
+        <div class="field"><label>State</label><input type="text" id="recipientState" maxlength="2" required></div>
+        <div class="field"><label>ZIP</label><input type="text" id="recipientZip" inputmode="numeric" maxlength="5" required></div>
+        <label class="checkbox-label"><input type="checkbox" id="recipientIsPoBox"> This is a P.O. Box</label>
+      </div>
+      <button class="submit-btn" id="submitBtn">Submit</button>
+    `;
+    document.getElementById("submitBtn").addEventListener("click", submitCustomerInfo);
+    initAddressAutocomplete();
+  }
+
+  function initAddressAutocomplete() {
+    if (!window.google || !window.google.maps || !window.google.maps.places) return;
+
+    autocompleteSender = new google.maps.places.Autocomplete(document.getElementById("senderStreet1"), {
+      componentRestrictions: { country: "us" }, fields: ["address_components"], types: ["address"],
+    });
+    autocompleteSender.addListener("place_changed", () => fillAddressParts(autocompleteSender, "sender"));
+
+    autocompleteRecipient = new google.maps.places.Autocomplete(document.getElementById("recipientStreet1"), {
+      componentRestrictions: { country: "us" }, fields: ["address_components"], types: ["address"],
+    });
+    autocompleteRecipient.addListener("place_changed", () => fillAddressParts(autocompleteRecipient, "recipient"));
+  }
+
+  function fillAddressParts(autocomplete, prefix) {
+    const place = autocomplete.getPlace();
+    if (!place.address_components) return;
+    let streetNumber = "", route = "", city = "", state = "", zip = "";
+    place.address_components.forEach((c) => {
+      if (c.types.includes("street_number")) streetNumber = c.long_name;
+      if (c.types.includes("route")) route = c.long_name;
+      if (c.types.includes("locality")) city = c.long_name;
+      if (c.types.includes("administrative_area_level_1")) state = c.short_name;
+      if (c.types.includes("postal_code")) zip = c.long_name;
+    });
+    document.getElementById(prefix + "Street1").value = (streetNumber + " " + route).trim();
+    document.getElementById(prefix + "City").value = city;
+    document.getElementById(prefix + "State").value = state;
+    document.getElementById(prefix + "Zip").value = zip;
+  }
+
+  async function submitCustomerInfo() {
+    const errorEl = document.getElementById("formError");
+    errorEl.innerHTML = "";
+
+    const val = (id) => document.getElementById(id).value.trim();
+    const data = {
+      senderName: val("senderName"),
+      senderStreet1: val("senderStreet1"),
+      senderCity: val("senderCity"),
+      senderState: val("senderState"),
+      senderZip: val("senderZip"),
+      senderEmail: val("senderEmail"),
+      senderPhone: val("senderPhone"),
+      recipientName: val("recipientName"),
+      recipientCompany: val("recipientCompany"),
+      recipientStreet1: val("recipientStreet1"),
+      recipientCity: val("recipientCity"),
+      recipientState: val("recipientState"),
+      recipientZip: val("recipientZip"),
+      recipientIsPoBox: document.getElementById("recipientIsPoBox").checked,
+    };
+
+    const requiredFields = ["senderName","senderStreet1","senderCity","senderState","senderZip","senderEmail","senderPhone","recipientName","recipientStreet1","recipientCity","recipientState","recipientZip"];
+    const missing = requiredFields.some((f) => !data[f]);
+    if (missing) {
+      errorEl.innerHTML = '<div class="error-msg">Please fill in all required fields.</div>';
+      return;
+    }
+
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    try {
+      const res = await fetch("/.netlify/functions/save-customer-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        errorEl.innerHTML = '<div class="error-msg">' + (err.error || "Something went wrong. Please try again.") + '</div>';
+        btn.disabled = false;
+        btn.textContent = "Submit";
+        return;
+      }
+      localMode = "waiting";
+      renderWaiting();
+      startPolling();
+    } catch (err) {
+      errorEl.innerHTML = '<div class="error-msg">Network error. Please try again.</div>';
+      btn.disabled = false;
+      btn.textContent = "Submit";
+    }
+  }
+
+  function renderWaiting() {
+    content.innerHTML = `
+      <div class="waiting">
+        <div class="spin">⏳</div>
+        <h2>Thanks! We're getting your shipping options ready...</h2>
+      </div>
+    `;
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(poll, POLL_INTERVAL_MS);
+    poll();
+  }
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
 
   async function poll() {
     try {
       const res = await fetch("/.netlify/functions/get-session", { cache: "no-store" });
       const data = await res.json();
-      const snapshot = JSON.stringify(data);
 
-      if (snapshot !== lastSnapshot) {
-        lastSnapshot = snapshot;
-        render(data);
+      if (!data.active) {
+        if (localMode !== "idle" && localMode !== "form") {
+          localMode = "idle";
+          renderIdle();
+          stopPolling();
+        }
+        return;
       }
+
+      if (data.phase === "completed" && data.completedInfo) {
+        localMode = "completed";
+        renderCompleted(data.completedInfo);
+        return;
+      }
+
+      if (data.phase === "quote" && data.rates) {
+        localMode = "review";
+        renderReview(data);
+        return;
+      }
+
+      // phase is awaiting_rates or similar — keep showing the waiting screen
     } catch (err) {
-      // Silent fail — just keep showing whatever's currently on screen and retry next poll.
+      // silent — just retry next interval
     }
   }
 
-  function render(data) {
-    const content = document.getElementById("content");
+  function renderIdle() {
+    content.innerHTML = `
+      <div class="idle">
+        <div class="icon">📦</div>
+        <h2>Ready to help you ship</h2>
+        <button class="big-btn" id="startBtn">Start New Shipment</button>
+      </div>
+    `;
+    document.getElementById("startBtn").addEventListener("click", startNewShipment);
+  }
 
-    if (!data.active) {
-      content.innerHTML = `
-        <div class="idle">
-          <div class="icon">📦</div>
-          <h2>Ready to help you ship</h2>
-          <p>Please hand this to our team member to get started.</p>
-        </div>
-      `;
-      return;
-    }
-
-    if (data.status === "completed" && data.completedInfo) {
-      const info = data.completedInfo;
-      content.innerHTML = `
-        <div class="card completed">
-          <div class="check">✓</div>
-          <h2>Label Purchased!</h2>
-          <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${escapeHtml(info.service || "")}</span></div>
-          <div class="detail-row"><span class="detail-label">Tracking #</span><span class="detail-value">${escapeHtml(info.trackingNumber || "")}</span></div>
-          <div class="price-big">$${parseFloat(info.price || 0).toFixed(2)}</div>
-          <p style="color:var(--muted);">Please proceed to payment.</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Active quote — show details + rate options
+  function renderReview(data) {
     let ratesHtml = "";
     if (data.rates && data.rates.length > 0) {
       ratesHtml = data.rates.map((r) => `
@@ -201,12 +385,31 @@
 
     content.innerHTML = `
       <div class="card">
+        <h2>Your Return Address</h2>
+        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${escapeHtml(data.senderName || "")}</span></div>
+        <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${escapeHtml(data.senderAddress || "")}</span></div>
+      </div>
+      <div class="card">
         <h2>Shipping To</h2>
-        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${escapeHtml(data.customerName || "")}</span></div>
-        <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${escapeHtml(data.address || "")}</span></div>
+        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${escapeHtml(data.recipientName || "")}</span></div>
+        <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${escapeHtml(data.recipientAddress || "")}</span></div>
         <div class="detail-row"><span class="detail-label">Package</span><span class="detail-value">${escapeHtml(data.packageSummary || "")}</span></div>
       </div>
-      ${ratesHtml ? `<div class="card"><h2>Please Confirm Your Shipping Option</h2>${ratesHtml}</div>` : ""}
+      ${ratesHtml ? '<div class="card"><h2>Please Confirm Your Shipping Option</h2>' + ratesHtml + '</div>' : ""}
+    `;
+  }
+
+  function renderCompleted(info) {
+    stopPolling();
+    content.innerHTML = `
+      <div class="card completed">
+        <div class="check">✓</div>
+        <h2>Label Purchased!</h2>
+        <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${escapeHtml(info.service || "")}</span></div>
+        <div class="detail-row"><span class="detail-label">Tracking #</span><span class="detail-value">${escapeHtml(info.trackingNumber || "")}</span></div>
+        <div class="price-big">$${parseFloat(info.price || 0).toFixed(2)}</div>
+        <p style="color:var(--muted);">Please proceed to payment.</p>
+      </div>
     `;
   }
 
@@ -215,9 +418,10 @@
     div.textContent = str;
     return div.innerHTML;
   }
+</script>
 
-  poll();
-  setInterval(poll, POLL_INTERVAL_MS);
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz-MrJ7nzusOAC885sG1mmWz9gwR78I1Y&libraries=places&loading=async">
 </script>
 
 </body>
