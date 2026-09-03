@@ -46,6 +46,8 @@ exports.handler = async (event) => {
       destCompany, // optional
       isPoBox,     // boolean — when true, only USPS rates are returned
       refNumber,   // optional — prints on the label (RA#, PO#, etc.)
+      insuranceAmount, // optional — declared value to insure via Shippo/XCover
+      insuranceContent, // optional — description of package contents, required if insuring
       weightLb,
       weightUnit,  // "lb" or "oz"
       lengthIn,
@@ -110,8 +112,19 @@ exports.handler = async (event) => {
 
     // Optional reference number (e.g. a return authorization #) — prints
     // directly on supported carrier labels (USPS prints it at the bottom).
-    if (refNumber) {
-      shipmentPayload.extra = { reference_1: refNumber };
+    // Optional insurance — Shippo/XCover coverage, cost is already folded
+    // into each rate's "amount" by Shippo, so our markup below covers it too.
+    const extra = {};
+    if (refNumber) extra.reference_1 = refNumber;
+    if (insuranceAmount && insuranceContent) {
+      extra.insurance = {
+        amount: String(insuranceAmount),
+        currency: "USD",
+        content: insuranceContent,
+      };
+    }
+    if (Object.keys(extra).length > 0) {
+      shipmentPayload.extra = extra;
     }
 
     const shippoResponse = await fetch("https://api.goshippo.com/shipments/", {
@@ -153,6 +166,9 @@ exports.handler = async (event) => {
       .map((r) => {
         const realCost = parseFloat(r.amount);
         const markedUpPrice = Math.round(realCost * MARKUP_MULTIPLIER * 100) / 100;
+        const insuranceIncluded = r.included_insurance_price
+          ? (Math.round(parseFloat(r.included_insurance_price) * MARKUP_MULTIPLIER * 100) / 100).toFixed(2)
+          : null;
         return {
           rateId: r.object_id, // needed to purchase this exact rate later
           carrier: r.provider,
@@ -160,6 +176,7 @@ exports.handler = async (event) => {
           estimatedDays: r.estimated_days,
           durationTerms: r.duration_terms,
           price: markedUpPrice.toFixed(2),
+          insuranceIncluded, // marked-up insurance cost, already folded into price above
         };
       })
       .sort((a, b) => parseFloat(a.price) - parseFloat(b.price));

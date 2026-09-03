@@ -53,6 +53,9 @@ exports.handler = async (event) => {
       recipientState: body.recipientState,
       recipientZip: body.recipientZip,
       recipientIsPoBox: !!body.recipientIsPoBox,
+      wantsInsurance: !!body.wantsInsurance,
+      insuranceAmount: body.insuranceAmount || "",
+      insuranceContent: body.insuranceContent || "",
       submittedAt: Date.now(),
       updatedAt: Date.now(),
     };
