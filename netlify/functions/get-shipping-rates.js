@@ -125,6 +125,7 @@ exports.handler = async (event) => {
     }
     if (Object.keys(extra).length > 0) {
       shipmentPayload.extra = extra;
+      console.log("Insurance/extra requested:", JSON.stringify(extra));
     }
 
     const shippoResponse = await fetch("https://api.goshippo.com/shipments/", {
@@ -147,6 +148,14 @@ exports.handler = async (event) => {
     }
 
     const rates = shipmentData.rates || [];
+
+    if (extra.insurance && rates.length > 0) {
+      console.log("Sample rate insurance field from Shippo:", JSON.stringify({
+        provider: rates[0].provider,
+        amount: rates[0].amount,
+        included_insurance_price: rates[0].included_insurance_price,
+      }));
+    }
 
     if (rates.length === 0) {
       return {
