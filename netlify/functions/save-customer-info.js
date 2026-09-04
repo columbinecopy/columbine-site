@@ -56,6 +56,7 @@ exports.handler = async (event) => {
       wantsInsurance: !!body.wantsInsurance,
       insuranceAmount: body.insuranceAmount || "",
       insuranceContent: body.insuranceContent || "",
+      agreedToDisclaimer: !!body.agreedToDisclaimer,
       submittedAt: Date.now(),
       updatedAt: Date.now(),
     };

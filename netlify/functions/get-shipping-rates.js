@@ -125,9 +125,6 @@ exports.handler = async (event) => {
     }
     if (Object.keys(extra).length > 0) {
       shipmentPayload.extra = extra;
-      console.error("DEBUG - Insurance/extra requested:", JSON.stringify(extra));
-    } else {
-      console.error("DEBUG - No insurance/extra sent this request. insuranceAmount:", insuranceAmount, "insuranceContent:", insuranceContent);
     }
 
     const shippoResponse = await fetch("https://api.goshippo.com/shipments/", {
@@ -151,14 +148,6 @@ exports.handler = async (event) => {
 
     const rates = shipmentData.rates || [];
 
-    if (rates.length > 0) {
-      console.error("DEBUG - Sample rate from Shippo:", JSON.stringify({
-        provider: rates[0].provider,
-        amount: rates[0].amount,
-        included_insurance_price: rates[0].included_insurance_price,
-      }));
-    }
-
     if (rates.length === 0) {
       return {
         statusCode: 200,
@@ -175,19 +164,28 @@ exports.handler = async (event) => {
       .filter((r) => r.amount) // discard malformed entries
       .filter((r) => !isPoBox || r.provider === "USPS") // UPS/FedEx/DHL don't deliver to PO Boxes
       .map((r) => {
-        const realCost = parseFloat(r.amount);
-        const markedUpPrice = Math.round(realCost * MARKUP_MULTIPLIER * 100) / 100;
-        const insuranceIncluded = r.included_insurance_price
-          ? (Math.round(parseFloat(r.included_insurance_price) * MARKUP_MULTIPLIER * 100) / 100).toFixed(2)
-          : null;
+        const totalRealCost = parseFloat(r.amount);
+        const insuranceRealCost = r.included_insurance_price ? parseFloat(r.included_insurance_price) : 0;
+        const shippingRealCost = totalRealCost - insuranceRealCost;
+
+        // Each column is marked up independently, then summed — this keeps
+        // the three displayed numbers always adding up exactly, with no
+        // stray penny from rounding a combined total separately.
+        const shippingPrice = Math.round(shippingRealCost * MARKUP_MULTIPLIER * 100) / 100;
+        const insurancePrice = insuranceRealCost > 0
+          ? Math.round(insuranceRealCost * MARKUP_MULTIPLIER * 100) / 100
+          : 0;
+        const totalPrice = Math.round((shippingPrice + insurancePrice) * 100) / 100;
+
         return {
           rateId: r.object_id, // needed to purchase this exact rate later
           carrier: r.provider,
           service: r.servicelevel?.name || r.servicelevel_token,
           estimatedDays: r.estimated_days,
           durationTerms: r.duration_terms,
-          price: markedUpPrice.toFixed(2),
-          insuranceIncluded, // marked-up insurance cost, already folded into price above
+          shippingPrice: shippingPrice.toFixed(2),
+          insurancePrice: insurancePrice > 0 ? insurancePrice.toFixed(2) : null,
+          price: totalPrice.toFixed(2), // total charged — used for selection/payment/receipt
         };
       })
       .sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
