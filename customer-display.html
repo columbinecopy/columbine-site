@@ -94,6 +94,18 @@
     margin-top: 4px;
   }
   .checkbox-label input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .toggle-btn {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 14px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fdfcfa;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   .submit-btn {
     width: 100%;
@@ -134,8 +146,8 @@
 
   .rate-option {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 12px;
     padding: 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -144,7 +156,31 @@
   }
   .rate-info .service { font-weight: 700; font-size: 16px; }
   .rate-info .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .rate-price { font-size: 20px; font-weight: 700; color: var(--accent-dark); }
+  .price-cols {
+    display: flex;
+    gap: 10px;
+  }
+  .price-col {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 6px;
+    background: #f0eee9;
+  }
+  .price-col.total {
+    background: var(--accent);
+  }
+  .price-col.total.single { flex: 0 0 auto; min-width: 140px; margin-left: auto; }
+  .price-col-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .price-col.total .price-col-label { color: rgba(255,255,255,0.75); }
+  .price-col-value { font-size: 18px; font-weight: 700; color: var(--accent-dark); }
+  .price-col.total .price-col-value { color: #fff; }
 
   .completed { text-align: center; padding: 40px 20px; }
   .completed .check { font-size: 56px; color: var(--accent); margin-bottom: 8px; }
@@ -171,6 +207,7 @@
 <script>
   const POLL_INTERVAL_MS = 2000;
   let localMode = "idle"; // idle | form | waiting | review | completed
+  let insuranceChoice = null; // "yes" | "no" | null (unanswered)
   let pollTimer = null;
   let autocompleteSender = null;
   let autocompleteRecipient = null;
@@ -192,6 +229,7 @@
   }
 
   function renderForm() {
+    insuranceChoice = null;
     content.innerHTML = `
       <div id="formError"></div>
       <div class="card">
@@ -216,19 +254,36 @@
       </div>
       <div class="card">
         <h2>Package Protection</h2>
-        <label class="checkbox-label"><input type="checkbox" id="wantsInsurance"> Insure this package for its full value</label>
+        <p style="margin:0 0 10px; font-size:14px; font-weight:600;">Would you like to insure this package for its full value?</p>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn" id="insuranceYesBtn" data-choice="yes">Yes</button>
+          <button type="button" class="toggle-btn" id="insuranceNoBtn" data-choice="no">No</button>
+        </div>
         <div id="insuranceFields" class="hidden" style="margin-top:14px;">
           <div class="field"><label>Value to insure ($)</label><input type="number" id="insuranceAmount" inputmode="decimal" min="1" step="1" placeholder="e.g. 150"></div>
           <div class="field"><label>What's in the package?</label><input type="text" id="insuranceContent" placeholder="e.g. custom t-shirts"></div>
         </div>
       </div>
+      <div class="card">
+        <h2>Before You Submit</h2>
+        <label class="checkbox-label" style="align-items:flex-start;">
+          <input type="checkbox" id="agreeDisclaimer" style="margin-top:2px;">
+          <span>I confirm this package does <strong>not</strong> contain: perishable food items, fireworks, explosives, ammunition or firearms, flammable or hazardous liquids/materials, illegal drugs or controlled substances, or any other item prohibited by USPS, UPS, or FedEx.</span>
+        </label>
+      </div>
       <button class="submit-btn" id="submitBtn">Submit</button>
     `;
     document.getElementById("submitBtn").addEventListener("click", submitCustomerInfo);
-    document.getElementById("wantsInsurance").addEventListener("change", (e) => {
-      document.getElementById("insuranceFields").classList.toggle("hidden", !e.target.checked);
-    });
+    document.getElementById("insuranceYesBtn").addEventListener("click", () => setInsuranceChoice("yes"));
+    document.getElementById("insuranceNoBtn").addEventListener("click", () => setInsuranceChoice("no"));
     initAddressAutocomplete();
+  }
+
+  function setInsuranceChoice(choice) {
+    insuranceChoice = choice;
+    document.getElementById("insuranceYesBtn").classList.toggle("active", choice === "yes");
+    document.getElementById("insuranceNoBtn").classList.toggle("active", choice === "no");
+    document.getElementById("insuranceFields").classList.toggle("hidden", choice !== "yes");
   }
 
   function initAddressAutocomplete() {
@@ -282,9 +337,10 @@
       recipientState: val("recipientState"),
       recipientZip: val("recipientZip"),
       recipientIsPoBox: document.getElementById("recipientIsPoBox").checked,
-      wantsInsurance: document.getElementById("wantsInsurance").checked,
+      wantsInsurance: insuranceChoice === "yes",
       insuranceAmount: val("insuranceAmount"),
       insuranceContent: val("insuranceContent"),
+      agreedToDisclaimer: true,
     };
 
     const requiredFields = ["senderName","senderStreet1","senderCity","senderState","senderZip","senderEmail","senderPhone","recipientName","recipientStreet1","recipientCity","recipientState","recipientZip"];
@@ -294,8 +350,18 @@
       return;
     }
 
+    if (!insuranceChoice) {
+      errorEl.innerHTML = '<div class="error-msg">Please select Yes or No for package insurance.</div>';
+      return;
+    }
+
     if (data.wantsInsurance && (!data.insuranceAmount || !data.insuranceContent)) {
       errorEl.innerHTML = '<div class="error-msg">Please enter a value and description for the insured item.</div>';
+      return;
+    }
+
+    if (!document.getElementById("agreeDisclaimer").checked) {
+      errorEl.innerHTML = '<div class="error-msg">Please confirm the package contents statement before submitting.</div>';
       return;
     }
 
@@ -391,15 +457,25 @@
   function renderReview(data) {
     let ratesHtml = "";
     if (data.rates && data.rates.length > 0) {
-      ratesHtml = data.rates.map((r) => `
+      ratesHtml = data.rates.map((r) => {
+        const hasInsurance = r.insurancePrice && parseFloat(r.insurancePrice) > 0;
+        const cols = hasInsurance
+          ? `
+            <div class="price-col"><div class="price-col-label">Shipping</div><div class="price-col-value">$${r.shippingPrice}</div></div>
+            <div class="price-col"><div class="price-col-label">Insurance</div><div class="price-col-value">$${r.insurancePrice}</div></div>
+            <div class="price-col total"><div class="price-col-label">Total</div><div class="price-col-value">$${r.price}</div></div>
+          `
+          : `<div class="price-col total single"><div class="price-col-label">Total</div><div class="price-col-value">$${r.price}</div></div>`;
+        return `
         <div class="rate-option">
           <div class="rate-info">
             <div class="service">${escapeHtml(r.carrier)} — ${escapeHtml(r.service)}</div>
-            <div class="meta">${escapeHtml(r.durationTerms || (r.estimatedDays ? r.estimatedDays + " business days" : ""))}${r.insuranceIncluded ? ` · Includes $${r.insuranceIncluded} insurance` : ""}</div>
+            <div class="meta">${escapeHtml(r.durationTerms || (r.estimatedDays ? r.estimatedDays + " business days" : ""))}</div>
           </div>
-          <div class="rate-price">$${r.price}</div>
+          <div class="price-cols">${cols}</div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
 
     const insuranceRow = data.wantsInsurance

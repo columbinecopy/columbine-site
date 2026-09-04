@@ -181,8 +181,8 @@
   }
   .rate-option {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 12px;
     padding: 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -194,7 +194,32 @@
   }
   .rate-info .service { font-weight: 700; font-size: 16px; }
   .rate-info .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .rate-price { font-size: 20px; font-weight: 700; color: var(--accent-dark); }
+  .price-cols {
+    display: flex;
+    gap: 10px;
+    margin-left: 32px;
+  }
+  .price-col {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 6px;
+    background: #f0eee9;
+  }
+  .price-col.total {
+    background: var(--accent);
+  }
+  .price-col.total.single { flex: 0 0 auto; min-width: 140px; margin-left: auto; }
+  .price-col-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .price-col.total .price-col-label { color: rgba(255,255,255,0.75); }
+  .price-col-value { font-size: 18px; font-weight: 700; color: var(--accent-dark); }
+  .price-col.total .price-col-value { color: #fff; }
   .radio-dot {
     width: 20px;
     height: 20px;
@@ -323,13 +348,14 @@
           This is a P.O. Box (shows USPS options only)
         </label>
       </div>
-      <div class="field full checkbox-field">
-        <label class="checkbox-label">
-          <input type="checkbox" id="wantsInsurance">
-          Insure this package (30% markup applied, same as shipping)
-        </label>
+      <div class="field full">
+        <label>Insure this package?</label>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn" id="insuranceYesBtn" data-choice="yes">Yes</button>
+          <button type="button" class="toggle-btn active" id="insuranceNoBtn" data-choice="no">No</button>
+        </div>
       </div>
-      <div class="field full" id="insuranceFieldsStaff">
+      <div class="field full hidden" id="insuranceFieldsStaff">
         <div class="dims-row" style="grid-template-columns: 1fr 2fr;">
           <input type="number" id="insuranceAmount" inputmode="decimal" min="1" step="1" placeholder="Value $">
           <input type="text" id="insuranceContent" placeholder="Contents (e.g. custom t-shirts)">
@@ -439,7 +465,7 @@
 </script>
 
 <script>
-  const state = { shipmentId: null, selectedRate: null, packageType: "box", pin: null, customerInfoReceived: false, lastSubmittedAt: null, autoFetchedForSubmission: false };
+  const state = { shipmentId: null, selectedRate: null, packageType: "box", pin: null, customerInfoReceived: false, lastSubmittedAt: null, autoFetchedForSubmission: false, insuranceChoice: "no" };
   const MAILER_HEIGHT_IN = "1"; // standard flat estimate for poly mailers
 
   const $ = (id) => document.getElementById(id);
@@ -479,7 +505,7 @@
       $("destState").value = data.recipientState || "";
       $("destZip").value = data.recipientZip || "";
       $("isPoBox").checked = !!data.recipientIsPoBox;
-      $("wantsInsurance").checked = !!data.wantsInsurance;
+      setInsuranceChoiceStaff(data.wantsInsurance ? "yes" : "no");
       $("insuranceAmount").value = data.insuranceAmount || "";
       $("insuranceContent").value = data.insuranceContent || "";
 
@@ -563,7 +589,7 @@
      "destName","destCompany","destStreet1","destCity","destState","destZip","refNumber","weightLb",
      "lengthIn","widthIn","heightIn","insuranceAmount","insuranceContent"].forEach((id) => { $(id).value = ""; });
     $("isPoBox").checked = false;
-    $("wantsInsurance").checked = false;
+    setInsuranceChoiceStaff("no");
     $("syncStatus").textContent = "Waiting for customer to fill out their info on the tablet...";
     $("syncStatus").style.color = "var(--muted)";
     $("rates-card").classList.add("hidden");
@@ -611,6 +637,20 @@
 
   $("typeBoxBtn").addEventListener("click", () => setPackageType("box"));
   $("typeMailerBtn").addEventListener("click", () => setPackageType("mailer"));
+
+  $("insuranceYesBtn").addEventListener("click", () => setInsuranceChoiceStaff("yes"));
+  $("insuranceNoBtn").addEventListener("click", () => setInsuranceChoiceStaff("no"));
+
+  function setInsuranceChoiceStaff(choice) {
+    state.insuranceChoice = choice;
+    $("insuranceYesBtn").classList.toggle("active", choice === "yes");
+    $("insuranceNoBtn").classList.toggle("active", choice === "no");
+    $("insuranceFieldsStaff").classList.toggle("hidden", choice !== "yes");
+    if (choice === "no") {
+      $("insuranceAmount").value = "";
+      $("insuranceContent").value = "";
+    }
+  }
 
   function setPackageType(type) {
     state.packageType = type;
@@ -699,8 +739,8 @@
           destCity,
           destState,
           isPoBox: $("isPoBox").checked,
-          insuranceAmount: $("wantsInsurance").checked ? $("insuranceAmount").value.trim() : "",
-          insuranceContent: $("wantsInsurance").checked ? $("insuranceContent").value.trim() : "",
+          insuranceAmount: state.insuranceChoice === "yes" ? $("insuranceAmount").value.trim() : "",
+          insuranceContent: state.insuranceChoice === "yes" ? $("insuranceContent").value.trim() : "",
           refNumber: $("refNumber").value.trim(),
           weightLb: weightLb,
           weightUnit: "lb",
@@ -745,15 +785,23 @@
     rates.forEach((rate) => {
       const el = document.createElement("div");
       el.className = "rate-option";
+      const hasInsurance = rate.insurancePrice && parseFloat(rate.insurancePrice) > 0;
+      const priceCols = hasInsurance
+        ? `
+          <div class="price-col"><div class="price-col-label">Shipping</div><div class="price-col-value">$${rate.shippingPrice}</div></div>
+          <div class="price-col"><div class="price-col-label">Insurance</div><div class="price-col-value">$${rate.insurancePrice}</div></div>
+          <div class="price-col total"><div class="price-col-label">Total</div><div class="price-col-value">$${rate.price}</div></div>
+        `
+        : `<div class="price-col total single"><div class="price-col-label">Total</div><div class="price-col-value">$${rate.price}</div></div>`;
       el.innerHTML = `
         <div class="rate-row">
           <div class="radio-dot"></div>
           <div class="rate-info">
             <div class="service">${rate.carrier} — ${rate.service}</div>
-            <div class="meta">${rate.durationTerms || (rate.estimatedDays ? rate.estimatedDays + " business days" : "Estimated delivery varies")}${rate.insuranceIncluded ? ` · Includes $${rate.insuranceIncluded} insurance` : ""}</div>
+            <div class="meta">${rate.durationTerms || (rate.estimatedDays ? rate.estimatedDays + " business days" : "Estimated delivery varies")}</div>
           </div>
         </div>
-        <div class="rate-price">$${rate.price}</div>
+        <div class="price-cols">${priceCols}</div>
       `;
       el.addEventListener("click", () => {
         document.querySelectorAll(".rate-option").forEach((o) => o.classList.remove("selected"));
