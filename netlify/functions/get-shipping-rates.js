@@ -47,6 +47,7 @@ exports.handler = async (event) => {
       destState,   // optional
       destCompany, // optional
       isPoBox,     // boolean — when true, only USPS rates are returned
+      carrierOnly, // optional — e.g. "UPS" to restrict results to one carrier
       refNumber,   // optional — prints on the label (RA#, PO#, etc.)
       insuranceAmount, // optional — declared value to insure via Shippo/XCover
       insuranceContent, // optional — description of package contents, required if insuring
@@ -157,7 +158,10 @@ exports.handler = async (event) => {
       };
     }
 
-    const uspsOnlyNote = isPoBox
+    const poBoxUpsConflict = isPoBox && carrierOnly === "UPS";
+    const uspsOnlyNote = poBoxUpsConflict
+      ? " This account only ships via UPS, and UPS cannot deliver to P.O. Boxes — please provide a physical street address."
+      : isPoBox
       ? " (P.O. Box selected — only USPS delivers to PO Boxes, so only USPS options are shown.)"
       : "";
 
@@ -165,6 +169,7 @@ exports.handler = async (event) => {
     const customerRates = rates
       .filter((r) => r.amount) // discard malformed entries
       .filter((r) => !isPoBox || r.provider === "USPS") // UPS/FedEx/DHL don't deliver to PO Boxes
+      .filter((r) => !carrierOnly || r.provider === carrierOnly) // restrict to one carrier when requested
       .map((r) => {
         const totalRealCost = parseFloat(r.amount);
         const insuranceRealCost = r.included_insurance_price ? parseFloat(r.included_insurance_price) : 0;
