@@ -4,6 +4,7 @@
 
 const SHIPPO_API_KEY = process.env.SHIPPO_API_KEY;
 const STAFF_PIN = process.env.STAFF_PIN;
+const PORTAL_PIN = process.env.PORTAL_PIN;
 const MARKUP_MULTIPLIER = 1.30; // 30% markup
 
 // Note: as of the return-address change, the customer's own info is used as
@@ -25,7 +26,8 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
 
-    if (!STAFF_PIN || body.pin !== STAFF_PIN) {
+    const pinValid = (STAFF_PIN && body.pin === STAFF_PIN) || (PORTAL_PIN && body.pin === PORTAL_PIN);
+    if (!pinValid) {
       return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized." }) };
     }
 
