@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ship a Package — Columbine Copy & Apparel</title>
+<script src="https://web.squarecdn.com/v1/square.js"></script>
+<style>
+:root{
+  --ink:#1a0a2e; --cream:#f4f0fb; --warm:#ece6f7;
+  --gold:#6b27b8; --gold-light:#8b47d8; --rust:#4a13a0;
+  --paper:#ffffff; --mid:#6e5a8a; --border:#d4c8e8;
+  --shadow:rgba(26,10,46,0.10); --green:#1a7a3a; --green-light:#e8f5ed;
+  --warn-bg:#fbe9e3; --warn:#b3441e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+.wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px}
+header{text-align:center;margin-bottom:24px}
+header h1{font-size:1.5rem;font-weight:700}
+header p{color:var(--mid);font-size:.85rem;margin-top:4px}
+
+.card{background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px var(--shadow)}
+.card h2{font-size:.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--mid);margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+label{font-size:.8rem;font-weight:600}
+input{font-size:16px;padding:11px 13px;border:1px solid var(--border);border-radius:6px;background:var(--cream);color:var(--ink);width:100%}
+input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(107,39,184,.12)}
+.checkbox-label{display:flex;align-items:flex-start;gap:10px;font-size:.9rem;cursor:pointer}
+.checkbox-label input{width:19px;height:19px;accent-color:var(--gold);margin-top:2px;flex-shrink:0}
+
+.toggle-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toggle-btn{font-size:15px;font-weight:600;padding:12px 10px;border-radius:6px;border:1px solid var(--border);background:var(--cream);color:var(--mid);cursor:pointer}
+.toggle-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+
+.big-btn{width:100%;background:var(--gold);color:#fff;border:none;padding:16px;font-size:17px;font-weight:700;border-radius:6px;cursor:pointer}
+.big-btn:active{background:var(--rust)}
+.big-btn:disabled{background:#b8a8d0}
+
+.error-msg{background:var(--warn-bg);color:var(--warn);padding:10px 14px;border-radius:6px;font-size:.85rem;margin-bottom:14px}
+.success-msg{background:var(--green-light);color:var(--green);padding:10px 14px;border-radius:6px;font-size:.85rem;margin-bottom:14px}
+
+.pin-gate{max-width:340px;margin:60px auto 0;text-align:center}
+.pin-gate input{text-align:center;letter-spacing:.2em;font-size:22px}
+
+.rate-option{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:var(--cream);cursor:pointer}
+.rate-option.selected{border-color:var(--gold);background:var(--warm)}
+.rate-row{display:flex;align-items:center}
+.radio-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);margin-right:12px;flex-shrink:0}
+.rate-option.selected .radio-dot{border-color:var(--gold);background:radial-gradient(var(--gold) 0 40%,transparent 42%)}
+.rate-info .service{font-weight:700;font-size:1rem}
+.rate-info .meta{font-size:.78rem;color:var(--mid);margin-top:2px}
+.price-cols{display:flex;gap:10px;margin-left:32px}
+.price-col{flex:1;text-align:center;padding:10px 8px;border-radius:6px;background:#fff}
+.price-col.total{background:var(--gold)}
+.price-col.total.single{flex:0 0 auto;min-width:140px;margin-left:auto}
+.price-col-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:2px}
+.price-col.total .price-col-label{color:rgba(255,255,255,.75)}
+.price-col-value{font-size:18px;font-weight:700;color:var(--gold)}
+.price-col.total .price-col-value{color:#fff}
+
+#card-container{padding:12px 0}
+.payment-status{font-size:.85rem;color:var(--mid);margin-top:8px}
+
+.completed{text-align:center;padding:20px}
+.completed .check{font-size:52px;color:var(--green);margin-bottom:8px}
+.completed h2{font-size:1.3rem;margin-bottom:16px}
+.action-btn{display:block;width:100%;text-align:center;padding:15px;border-radius:6px;font-weight:700;font-size:15px;margin-bottom:10px;text-decoration:none;cursor:pointer;border:none}
+.action-btn.primary{background:var(--gold);color:#fff}
+.action-btn.secondary{background:var(--warm);color:var(--ink);border:1px solid var(--border)}
+.detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--warm);font-size:.9rem;text-align:left}
+.detail-row:last-child{border-bottom:none}
+.detail-label{color:var(--mid)}
+.detail-value{font-weight:600}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Ship a Package</h1>
+    <p>Columbine Copy &amp; Apparel</p>
+  </header>
+
+  <div class="card pin-gate" id="pin-gate">
+    <h2>Access Code</h2>
+    <div class="field"><label for="portalPin">Enter your access code</label><input type="password" id="portalPin" inputmode="numeric" placeholder="Code"></div>
+    <button class="big-btn" id="unlockBtn">Unlock</button>
+    <div id="pinError"></div>
+  </div>
+
+  <div id="tool-content" class="hidden"></div>
+</div>
+
+<script>
+  const state = {
+    pin: null,
+    insuranceChoice: null,
+    selectedRate: null,
+    squareCard: null,
+    payments: null,
+  };
+
+  const SQUARE_APP_ID = 'sq0idp-R9VagBVL9Jyqnvgs60MzVQ';
+  const SQUARE_LOCATION_ID = 'LYFKKSNCMBCVD';
+
+  const $ = (id) => document.getElementById(id);
+
+  $('unlockBtn').addEventListener('click', attemptUnlock);
+  $('portalPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptUnlock(); });
+
+  async function attemptUnlock() {
+    const enteredPin = $('portalPin').value.trim();
+    if (!enteredPin) return;
+    $('unlockBtn').disabled = true;
+    $('unlockBtn').textContent = 'Checking...';
+    try {
+      const res = await fetch('/.netlify/functions/verify-portal-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: enteredPin }),
+      });
+      if (!res.ok) {
+        $('pinError').innerHTML = '<div class="error-msg">Incorrect code. Please try again.</div>';
+        $('unlockBtn').disabled = false;
+        $('unlockBtn').textContent = 'Unlock';
+        return;
+      }
+      state.pin = enteredPin;
+      $('pin-gate').classList.add('hidden');
+      $('tool-content').classList.remove('hidden');
+      renderForm();
+    } catch (err) {
+      $('pinError').innerHTML = '<div class="error-msg">Network error. Please try again.</div>';
+      $('unlockBtn').disabled = false;
+      $('unlockBtn').textContent = 'Unlock';
+    }
+  }
+
+  function renderForm() {
+    state.insuranceChoice = null;
+    state.selectedRate = null;
+    $('tool-content').innerHTML = `
+      <div id="formError"></div>
+      <div class="card">
+        <h2>Your Return Info</h2>
+        <div class="field"><label>Your Name / Business</label><input type="text" id="senderName"></div>
+        <div class="field"><label>Street Address</label><input type="text" id="senderStreet1"></div>
+        <div class="field"><label>City</label><input type="text" id="senderCity"></div>
+        <div class="field"><label>State</label><input type="text" id="senderState" maxlength="2"></div>
+        <div class="field"><label>ZIP</label><input type="text" id="senderZip" inputmode="numeric" maxlength="5"></div>
+        <div class="field"><label>Email</label><input type="email" id="senderEmail"></div>
+        <div class="field"><label>Phone</label><input type="tel" id="senderPhone"></div>
+      </div>
+      <div class="card">
+        <h2>Shipping To</h2>
+        <div class="field"><label>Recipient Name</label><input type="text" id="recipientName"></div>
+        <div class="field"><label>Business Name (optional)</label><input type="text" id="recipientCompany"></div>
+        <div class="field"><label>Street Address</label><input type="text" id="recipientStreet1"></div>
+        <div class="field"><label>City</label><input type="text" id="recipientCity"></div>
+        <div class="field"><label>State</label><input type="text" id="recipientState" maxlength="2"></div>
+        <div class="field"><label>ZIP</label><input type="text" id="recipientZip" inputmode="numeric" maxlength="5"></div>
+        <label class="checkbox-label"><input type="checkbox" id="recipientIsPoBox"><span>This is a P.O. Box</span></label>
+      </div>
+      <div class="card">
+        <h2>Package</h2>
+        <div class="field"><label>Weight (lb)</label><input type="number" id="weightLb" inputmode="decimal" step="0.1" min="0.1" placeholder="e.g. 4.8"></div>
+        <div class="field"><label>Dimensions (in) — Length x Width x Height</label></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <input type="number" id="lengthIn" placeholder="L" min="1">
+          <input type="number" id="widthIn" placeholder="W" min="1">
+          <input type="number" id="heightIn" placeholder="H" min="1">
+        </div>
+      </div>
+      <div class="card">
+        <h2>Package Protection</h2>
+        <p style="margin-bottom:10px;font-size:.85rem;font-weight:600">Insure this package for its full value?</p>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn" id="insuranceYesBtn">Yes</button>
+          <button type="button" class="toggle-btn" id="insuranceNoBtn">No</button>
+        </div>
+        <div id="insuranceFields" class="hidden" style="margin-top:14px">
+          <div class="field"><label>Value to insure ($)</label><input type="number" id="insuranceAmount" min="1" step="1"></div>
+          <div class="field"><label>What's in the package?</label><input type="text" id="insuranceContent"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Before You Continue</h2>
+        <label class="checkbox-label">
+          <input type="checkbox" id="agreeDisclaimer">
+          <span>I confirm this package does <strong>not</strong> contain: perishable food items, fireworks, explosives, ammunition or firearms, flammable or hazardous liquids/materials, illegal drugs or controlled substances, or any other item prohibited by USPS, UPS, or FedEx.</span>
+        </label>
+      </div>
+      <button class="big-btn" id="getRatesBtn">Get Shipping Options</button>
+    `;
+    $('getRatesBtn').addEventListener('click', fetchRates);
+    $('insuranceYesBtn').addEventListener('click', () => setInsurance('yes'));
+    $('insuranceNoBtn').addEventListener('click', () => setInsurance('no'));
+  }
+
+  function setInsurance(choice) {
+    state.insuranceChoice = choice;
+    $('insuranceYesBtn').classList.toggle('active', choice === 'yes');
+    $('insuranceNoBtn').classList.toggle('active', choice === 'no');
+    $('insuranceFields').classList.toggle('hidden', choice !== 'yes');
+  }
+
+  async function fetchRates() {
+    $('formError').innerHTML = '';
+    const val = (id) => $(id).value.trim();
+
+    const required = ['senderName','senderStreet1','senderCity','senderState','senderZip','senderEmail','senderPhone',
+                       'recipientName','recipientStreet1','recipientCity','recipientState','recipientZip','weightLb','lengthIn','widthIn','heightIn'];
+    const missing = required.some((id) => !val(id));
+    if (missing) {
+      $('formError').innerHTML = '<div class="error-msg">Please fill in all required fields.</div>';
+      return;
+    }
+    if (!state.insuranceChoice) {
+      $('formError').innerHTML = '<div class="error-msg">Please select Yes or No for package insurance.</div>';
+      return;
+    }
+    if (state.insuranceChoice === 'yes' && (!val('insuranceAmount') || !val('insuranceContent'))) {
+      $('formError').innerHTML = '<div class="error-msg">Please enter a value and description for the insured item.</div>';
+      return;
+    }
+    if (!$('agreeDisclaimer').checked) {
+      $('formError').innerHTML = '<div class="error-msg">Please confirm the package contents statement.</div>';
+      return;
+    }
+
+    $('getRatesBtn').disabled = true;
+    $('getRatesBtn').textContent = 'Getting rates...';
+
+    try {
+      const res = await fetch('/.netlify/functions/get-shipping-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: state.pin,
+          senderName: val('senderName'), senderStreet1: val('senderStreet1'), senderCity: val('senderCity'),
+          senderState: val('senderState'), senderZip: val('senderZip'), senderEmail: val('senderEmail'), senderPhone: val('senderPhone'),
+          destName: val('recipientName'), destCompany: val('recipientCompany'), destStreet1: val('recipientStreet1'),
+          destCity: val('recipientCity'), destState: val('recipientState'), destZip: val('recipientZip'),
+          isPoBox: $('recipientIsPoBox').checked,
+          insuranceAmount: state.insuranceChoice === 'yes' ? val('insuranceAmount') : '',
+          insuranceContent: state.insuranceChoice === 'yes' ? val('insuranceContent') : '',
+          weightLb: val('weightLb'), weightUnit: 'lb',
+          lengthIn: val('lengthIn'), widthIn: val('widthIn'), heightIn: val('heightIn'),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        $('formError').innerHTML = '<div class="error-msg">' + (data.error || 'Could not get rates.') + '</div>';
+        return;
+      }
+      if (!data.rates || data.rates.length === 0) {
+        $('formError').innerHTML = '<div class="error-msg">No shipping options found. Double-check the ZIP code.</div>';
+        return;
+      }
+      renderRatesScreen(data.rates, {
+        senderName: val('senderName'), senderEmail: val('senderEmail'),
+      });
+    } catch (err) {
+      $('formError').innerHTML = '<div class="error-msg">Network error. Please try again.</div>';
+    } finally {
+      $('getRatesBtn').disabled = false;
+      $('getRatesBtn').textContent = 'Get Shipping Options';
+    }
+  }
+
+  function renderRatesScreen(rates, customer) {
+    state.customer = customer;
+    const ratesHtml = rates.map((r, i) => {
+      const hasInsurance = r.insurancePrice && parseFloat(r.insurancePrice) > 0;
+      const cols = hasInsurance
+        ? `<div class="price-col"><div class="price-col-label">Shipping</div><div class="price-col-value">$${r.shippingPrice}</div></div>
+           <div class="price-col"><div class="price-col-label">Insurance</div><div class="price-col-value">$${r.insurancePrice}</div></div>
+           <div class="price-col total"><div class="price-col-label">Total</div><div class="price-col-value">$${r.price}</div></div>`
+        : `<div class="price-col total single"><div class="price-col-label">Total</div><div class="price-col-value">$${r.price}</div></div>`;
+      return `
+        <div class="rate-option" data-index="${i}">
+          <div class="rate-row">
+            <div class="radio-dot"></div>
+            <div class="rate-info">
+              <div class="service">${r.carrier} — ${r.service}</div>
+              <div class="meta">${r.durationTerms || (r.estimatedDays ? r.estimatedDays + ' business days' : '')}</div>
+            </div>
+          </div>
+          <div class="price-cols">${cols}</div>
+        </div>`;
+    }).join('');
+
+    $('tool-content').innerHTML = `
+      <div class="card"><h2>Select a Shipping Option</h2><div id="ratesList">${ratesHtml}</div></div>
+      <div class="card hidden" id="paymentCard">
+        <h2>Payment</h2>
+        <div id="card-container"></div>
+        <button class="big-btn" id="payBtn" disabled>Pay &amp; Purchase Label</button>
+        <div class="payment-status" id="paymentStatus"></div>
+      </div>
+    `;
+
+    document.querySelectorAll('.rate-option').forEach((el) => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.rate-option').forEach((o) => o.classList.remove('selected'));
+        el.classList.add('selected');
+        state.selectedRate = rates[parseInt(el.dataset.index)];
+        $('paymentCard').classList.remove('hidden');
+        initSquare();
+      });
+    });
+  }
+
+  async function initSquare() {
+    if (state.squareCard) return; // already initialized
+    if (!window.Square) {
+      $('paymentStatus').textContent = 'Payment form could not load. Please refresh and try again.';
+      return;
+    }
+    try {
+      state.payments = window.Square.payments(SQUARE_APP_ID, SQUARE_LOCATION_ID);
+      state.squareCard = await state.payments.card();
+      await state.squareCard.attach('#card-container');
+      $('payBtn').disabled = false;
+      $('payBtn').addEventListener('click', handlePayment);
+    } catch (err) {
+      console.error('Square init failed:', err);
+      $('paymentStatus').textContent = 'Payment form could not load. Please refresh and try again.';
+    }
+  }
+
+  async function handlePayment() {
+    const btn = $('payBtn');
+    const status = $('paymentStatus');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    status.textContent = '';
+
+    try {
+      const result = await state.squareCard.tokenize();
+      if (result.status !== 'OK') {
+        status.textContent = result.errors?.[0]?.message || 'Card error.';
+        btn.disabled = false;
+        btn.textContent = 'Pay & Purchase Label';
+        return;
+      }
+
+      const amountCents = Math.round(parseFloat(state.selectedRate.price) * 100);
+
+      const res = await fetch('/.netlify/functions/portal-buy-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: state.pin,
+          sourceId: result.token,
+          rateId: state.selectedRate.rateId,
+          amountCents,
+          customerName: state.customer.senderName,
+          customerEmail: state.customer.senderEmail,
+        }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        status.textContent = data.error || 'Something went wrong. Please try again or call us.';
+        btn.disabled = false;
+        btn.textContent = 'Pay & Purchase Label';
+        return;
+      }
+
+      renderCompleted(data);
+    } catch (err) {
+      status.textContent = 'Network error. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Pay & Purchase Label';
+    }
+  }
+
+  function renderCompleted(data) {
+    $('tool-content').innerHTML = `
+      <div class="card completed">
+        <div class="check">✓</div>
+        <h2>Label Purchased!</h2>
+        <div class="detail-row"><span class="detail-label">Order</span><span class="detail-value">${data.orderId}</span></div>
+        <div class="detail-row"><span class="detail-label">Carrier</span><span class="detail-value">${data.carrier || ''}</span></div>
+        <div class="detail-row"><span class="detail-label">Tracking #</span><span class="detail-value">${data.trackingNumber || ''}</span></div>
+      </div>
+      <a href="${data.labelUrl}" target="_blank" class="action-btn primary">Open &amp; Print Label</a>
+      <a href="${data.labelUrl}" download="shipping-label.pdf" class="action-btn secondary">Download PDF</a>
+      <button class="action-btn secondary" id="emailLabelBtn">Email Me a Copy</button>
+      <div id="emailStatus"></div>
+      <button class="action-btn secondary" id="shipAnotherBtn" style="margin-top:20px">Ship Another Package</button>
+    `;
+    $('emailLabelBtn').addEventListener('click', async () => {
+      $('emailLabelBtn').disabled = true;
+      $('emailLabelBtn').textContent = 'Sending...';
+      try {
+        const res = await fetch('/.netlify/functions/portal-email-label', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: state.pin,
+            labelUrl: data.labelUrl,
+            customerEmail: state.customer.senderEmail,
+            orderId: data.orderId,
+          }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          $('emailStatus').innerHTML = '<div class="success-msg">Emailed! Check your inbox.</div>';
+        } else {
+          $('emailStatus').innerHTML = '<div class="error-msg">' + (result.error || 'Could not send email.') + '</div>';
+        }
+      } catch (err) {
+        $('emailStatus').innerHTML = '<div class="error-msg">Network error sending email.</div>';
+      } finally {
+        $('emailLabelBtn').disabled = false;
+        $('emailLabelBtn').textContent = 'Email Me a Copy';
+      }
+    });
+    $('shipAnotherBtn').addEventListener('click', () => {
+      state.squareCard = null;
+      state.payments = null;
+      state.selectedRate = null;
+      renderForm();
+    });
+  }
+</script>
+
+</body>
+</html>
